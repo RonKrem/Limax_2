@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <title>Limax web pages</title>
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="icon" href="data:,">
+   <link rel="stylesheet" type="text/css" href="style.css">
+   <style>
+      .mygrid {
+         border-style: solid none solid solid;
+         max-width: 800px;
+         margin: 0 auto;
+         display: grid;
+         text-align: center;
+         grid-template-columns: 1fr 1fr 1fr;
+      }
+      .box {
+         border-style: none solid none none;
+         font-size: 30px;
+         background-color: lightblue;
+      }
+      .buttontext {
+         border-style: none solid none none;
+         font-size: 30px;
+         font-weight: bold;
+         padding: 1px 1px;
+         background-color: lightblue
+      }
+      .mytext {
+         font-size: 15px;
+         font-weight: bold;
+         padding: 20px 20px;
+         background-color: lightcyan;
+      }
+      .numeric {
+         font-size: 25px;
+         font-weight: bold;
+         padding: 10px 10px;
+         background-color: lightcyan;
+      }
+      input[type=text], select 
+      {
+         font-size: 16px;
+         font-weight: bold;
+         text-align: center;
+         width: 100px;
+         height: 30px;
+         display: inline-block;
+         border: 2px solid #000000;
+      }
+      .button {
+         background-color: #4caf50;
+         color: black;
+         width: 180px;
+         height: 90px;
+         padding: 16px 40px;
+         font-size: 30px;
+         font-weight: bold;
+         cursor: pointer;
+         border-radius: 4px;
+      }
+      .button2 {
+         background-color: red;
+      }
+      .switch {
+         position: relative; 
+         display: inline-block; 
+         width: 120px; 
+         height: 40px;
+      } 
+
+      .switch input {
+      display: none;
+      }
+   </style>
+</head>
+<body>
+   <div class="topnav" id="myTopnav">
+      <a href="#" class="disabled">LIMAX SLUG<br>TEST SYSTEM</a>
+      <div class="topnav-right">
+         <a href="/">SLUG<br>POSITIONING</a>
+         <a href="/setup">SITE<br>SETUP</a>
+         <a href="/basicsine">BASIC<br>SINE</a>
+         <a href="/sweep">SINE<br>SWEEP</a>
+         <a href="/plot4">SHOW<br>PLOTS</a>
+         <a href="/datafile">DATA<br>CONTROL</a>
+         <a href="/equipment">EQUIPMENT<br>SETUP</a>
+      </div>
+      <a href="javascript:void(0);" class="icon" onclick="handleNavBar()">
+         <i class="fa fa-bars"></i>
+      </a>
+   </div>
+<h1><br>LIMAX WINCH MANUAL CONTROL</h1>
+   <div class="mygrid">
+      <div class="buttontext">
+         <p>MOVE UP</p>
+      </div>
+      <div class="buttontext">
+         <p>STOP</p>
+      </div>
+      <div class="buttontext">
+         <p>MOVE DOWN</p>
+      </div>
+      <label class="switch">
+         <input type="checkbox", class="chkbox", onchange="toggleCheckbox(this)", id="1">
+         <span class="kbutton", id="1k"></span>
+      </label>
+      <label class="switch">
+         <input type="checkbox", class="chkbox", onchange="toggleCheckbox(this)", id="2">
+         <span class="kbutton", id="2k"></span>
+      </label>
+      <label class="switch">
+         <input type="checkbox", class="chkbox", onchange="toggleCheckbox(this)", id="3">
+         <span class="kbutton", id="3k"></span>
+      </label>
+   </div>
+   <div class="numeric">
+      <label><br>SPEED</label>
+      <input type="text", id="rpm", name="isnumber", min="1", max="200", onchange="dataChangeFunction(this)">
+      <label>(RPM)</label>
+   </div>
+   <div class="mytext">
+      <div>
+         <label>Kremford Pty Ltd</label>
+      </div>
+   </div>
+
+</body>
+</html>

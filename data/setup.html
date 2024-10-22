@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <title>Limax web pages</title>
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="icon" href="data:,">
+   <link rel="stylesheet" type="text/css" href="Style.css">
+   <style>
+      .mygrid {
+         border-style: solid solid solid solid;
+         max-width: 800px;
+         margin: 0 auto;
+         display: grid;
+         text-align: center;
+         grid-template-columns: 1fr 3fr;
+      }
+      .box {
+         font-size: 30px;
+         background-color: lightcyan;
+      }
+      .buttontext {
+         font-size: 20px;
+         font-weight: bold;
+         padding: 1px 1px;
+         background-color: lightcyan
+      }
+      .mytext {
+         font-size: 15px;
+         font-weight: bold;
+         padding: 20px 20px;
+         background-color: lightcyan;
+      }
+      .myinputs {
+         font-size: 25px;
+         font-weight: bold;
+         padding: 10px 10px;
+         background-color: lightcyan;
+      }
+      input[type=text], select 
+      {
+         font-size: 16px;
+         font-weight: bold;
+         text-align: center;
+         width: 100px;
+         height: 30px;
+         display: inline-block;
+         border: 2px solid #000000;
+      }
+      .button {
+         background-color: #4caf50;
+         color: black;
+         width: 180px;
+         padding: 16px 40px;
+         font-size: 30px;
+         font-weight: bold;
+         cursor: pointer;
+         border-radius: 4px;
+      }
+      .button2 {
+         background-color: red;
+      }
+      textarea {
+         font-size: 20px;
+         text-align: left;
+         width: 100%;
+         resize: none;
+      }
+
+   </style>
+</head>
+<body>
+   <div class="topnav" id="myTopnav">
+      <a href="#" class="disabled">SLUG<br>TEST SYSTEM</a>
+      <div class="topnav-right">
+         <a href="/">SLUG<br>POSITIONING</a>
+         <a href="/setup">SITE<br>SETUP</a>
+         <a href="/basicsine">BASIC<br>SINE</a>
+         <a href="/sweep">SINE<br>SWEEP</a>
+         <a href="/plot4">SHOW<br>PLOTS</a>
+         <a href="/datafile">DATA<br>CONTROL</a>
+         <a href="/equipment">EQUIPMENT<br>SETUP</a>
+      </div>
+      <a href="javascript:void(0);" class="icon" onclick="handleNavBar()">
+         <i class="fa fa-bars"></i>
+      </a>
+   </div>
+      <h1><br>SITE TEST DETAILS</h1>
+      <div class="myinputs">
+         <label>Enter a description for the test environment.</label>
+         <textarea id="descrip", name="istext", cols="60", rows="4", onchange="dataChangeFunction(this)">
+         </textarea>
+      </div>
+      <div class="myinputs">
+         <label>Enter descriptions for each well.</label>
+      </div>
+      <div class="mygrid">
+         <div class="buttontext">
+            <p>DRIVING WELL</p>
+         </div>
+         <div class="myinputs">
+            <textarea id ="detail_1", name="istext", cols="50", rows="3", onchange="dataChangeFunction(this)">
+            </textarea>
+         </div>
+         <div class="buttontext">
+            <p>OBSERVATION WELL 1</p>
+         </div>
+         <div class="myinputs">
+            <textarea id ="detail_2", name="istext", cols="50", rows="3", onchange="dataChangeFunction(this)">
+            </textarea>
+         </div>
+         <div class="buttontext">
+            <p>OBSERVATION WELL 2</p>
+         </div>
+         <div class="myinputs">
+            <textarea id ="detail_3", name="istext", cols="50", rows="3", onchange="dataChangeFunction(this)">
+            </textarea>
+         </div>
+      </div>
+      <div class="mytext">
+         <div>
+            <label>Kremford Pty Ltd</label>
+         </div>
+      </div>
+   </div>
+</body>
+</html>
