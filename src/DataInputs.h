@@ -6,11 +6,17 @@
 //-----------------------------------------------------------------------------
 // Analog structure definitions.
 //
+// typedef struct
+// {
+//    const char  *InputParameter;  // matches the input name from html
+//    String      HtmlValue;        // item value
+//    char        *PathName;        // SPIFFS name where stored
+//    boolean     Update;           // must update SPIFFS    
+// } DataEntry;
 typedef struct
 {
-   const char  *InputParameter;  // matches the input name from html
+   String      InputParameter;   // matches the input name from html
    String      HtmlValue;        // item value
-   char        *PathName;        // SPIFFS name where stored
    boolean     Update;           // must update SPIFFS    
 } DataEntry;
 
@@ -121,9 +127,13 @@ class CDataInputs
 public:
    CDataInputs(void);
 
+   void PrepareEprom(void);
+
    void SetInputPaths(void);
 
    DataEntry GetEntry(uint32_t index) const;
 
-private:   
+private:  
+
+   String CreateDirectoryName(uint32_t index);
 };

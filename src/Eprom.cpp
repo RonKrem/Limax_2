@@ -78,3 +78,10 @@ FileStateType CEprom::WriteFile(const char *path, const char *message)
 {
    return FileSystem.WriteFile(LittleFS, path, message);
 }
+
+//-------------------------------------------------------------------
+//
+String CEprom::ReadFile(const char *path) 
+{
+   return FileSystem.ReadFile(LittleFS, path);
+}

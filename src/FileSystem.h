@@ -37,7 +37,9 @@ public:
 
    FileStateType FileExists(fs::FS &fs, const char *path);
 
-   FileStateType WriteFile(fs::FS &fs, const char *path, const char *message);
+   String ReadFile(fs::FS &fs, const char* path);
+
+   FileStateType WriteFile(fs::FS &fs, const char* path, const char* message);
 
 private:
 };

@@ -92,9 +92,9 @@ void GetTurnInCms(void)
    DataEntry entry;
 
    entry = DataInputs.GetEntry(0);
-   Serial.printf("%s %s %s %d\n", entry.InputParameter, entry.HtmlValue.c_str(), entry.PathName, entry.Update);
+   Serial.printf("%s %s %s %d\n", entry.InputParameter.c_str(), entry.HtmlValue.c_str(), entry.Update);
    entry = DataInputs.GetEntry(100);
-   Serial.printf("%s %s %s %d\n", entry.InputParameter, entry.HtmlValue, entry.PathName, entry.Update);
+   Serial.printf("%s %s %s %d\n", entry.InputParameter.c_str(), entry.HtmlValue, entry.Update);
    turn = PI * DataInputs.GetEntry(DB_DRUM_DIA).HtmlValue.toFloat() / 10.0 * DataInputs.GetEntry(DB_DRIVE_RATIO).HtmlValue.toFloat();
    Serial.printf("OnedrumTurnInCMS %f\n", turn);
 
@@ -161,10 +161,12 @@ void setup()
    // the relevant buttons. Must be done before either are
    // accessed.
    //
-   Buttons.SetButtonPaths();
-   DataInputs.SetInputPaths();
+//   Buttons.SetButtonPaths();
+//   DataInputs.SetInputPaths();
 
-   GetTurnInCms();
+   DataInputs.PrepareEprom();
+
+//   GetTurnInCms();
 
    
 //    if (!InitWiFi())

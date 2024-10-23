@@ -105,6 +105,33 @@ FileStateType CFileSystem::FileExists(fs::FS &fs, const char *path)
    return CARD_SUCCESS;
 }
 
+//-----------------------------------------------------------------------------
+// Read an entry from SPIFFS
+//
+String CFileSystem::ReadFile(fs::FS &fs, const char* path)
+{
+   File file;
+   String fileContent;
+
+   file = fs.open(path);
+   if (!file || file.isDirectory())
+   {
+      String error = "NULL";
+      Serial.printf("LittleFS failed to open file %s for reading\n", path);
+      return error;
+   }
+  
+   while (file.available())
+   {
+      fileContent = file.readStringUntil('\n');
+      break;     
+   }
+
+   Serial.printf("Reading file: %s Content: %s\n", path, fileContent.c_str());
+
+   return fileContent;
+}
+
 //-------------------------------------------------------------------
 //
 FileStateType CFileSystem::WriteFile(fs::FS &fs, const char *path, const char *message) 
