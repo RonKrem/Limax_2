@@ -39,11 +39,11 @@ FileStateType CSDCard::Begin()
 
    if (cardType == CARD_NONE) 
    {
-      Serial.println(Serial.println("No SD_MMC card attached"));
+      Serial.println(Serial.println("No SDCard attached"));
       return NO_CARD_EXISTS;
    }
 
-   Serial.println("SD_MMC Card Type: ");
+   Serial.printf("SDCard Type: ");
    if (cardType == CARD_MMC) 
    {
       Serial.println("MMC");
@@ -64,7 +64,7 @@ FileStateType CSDCard::Begin()
    }
 
    cardSize = SD_MMC.cardSize() / (1024 * 1024);
-   Serial.printf("SD_MMC Card Size: %llu MB\n", cardSize);
+   Serial.printf("SDCard Size: %llu MB\n", cardSize);
    Serial.println("-----------------");
 
    return CARD_SUCCESS;
@@ -86,12 +86,12 @@ FileStateType CSDCard::VerifyDataFolder(const char *path)
       Serial.printf("Creating data folder %s\n", DATA_FOLDER);
       if (CreateDir(DATA_FOLDER) != CARD_SUCCESS)
       {
-         Serial.println("Cannot create data folder.");
+         Serial.println(" Cannot create data folder.");
          return FAILED_OPEN_FOLDER;
       }
       else
       {
-         Serial.println("Data folder created.");
+         Serial.println(" Data folder created.");
       }
    }
 

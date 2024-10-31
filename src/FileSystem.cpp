@@ -120,14 +120,14 @@ String CFileSystem::ReadFile(fs::FS &fs, const char* path)
       Serial.printf("LittleFS failed to open file %s for reading\n", path);
       return error;
    }
-  
+
    while (file.available())
    {
       fileContent = file.readStringUntil('\n');
       break;     
    }
 
-   Serial.printf("Reading file: %s Content: %s\n", path, fileContent.c_str());
+//   Serial.printf("Reading file: %s Content: %s\n", path, fileContent.c_str());
 
    return fileContent;
 }

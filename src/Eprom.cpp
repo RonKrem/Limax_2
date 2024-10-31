@@ -74,14 +74,14 @@ void CEprom::ListDir(const char *dirname, uint8_t levels)
 
 //-------------------------------------------------------------------
 //
-FileStateType CEprom::WriteFile(const char *path, const char *message) 
+FileStateType CEprom::WriteFile(String path, String message) 
 {
-   return FileSystem.WriteFile(LittleFS, path, message);
+   return FileSystem.WriteFile(LittleFS, path.c_str(), message.c_str());
 }
 
 //-------------------------------------------------------------------
 //
-String CEprom::ReadFile(const char *path) 
+String CEprom::ReadFile(String path) 
 {
-   return FileSystem.ReadFile(LittleFS, path);
+   return FileSystem.ReadFile(LittleFS, path.c_str());
 }

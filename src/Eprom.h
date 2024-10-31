@@ -15,9 +15,9 @@ public:
 
    void ListDir(const char *dirname, uint8_t levels) ;
 
-   String ReadFile(const char *path) ;
+   String ReadFile(String path) ;
 
-   FileStateType WriteFile(const char *path, const char *message) ;
+   FileStateType WriteFile(String path, String message) ;
 
    void PrepareEprom(void);
 

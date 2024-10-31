@@ -16,10 +16,9 @@
 typedef struct 
 {
    String id;           // html id
-   String state;        // "1" or "0"
+   String checked;      // "1" or "0"
    String onText;       // text shown to turn it on
    String offText;      // text shown to turn it off
-   const char *path;    // associated SPIFFS path
    uint8_t states;      // 0x01 - state is saved if true
                         // 0x02 - true if is GPIO port
 } ButtonDetails;
@@ -52,9 +51,9 @@ class CButtons
 public:
    CButtons(void);
    
-   void SetButtonPaths(void);
-
    String GetButtonStates(void);
+
+   void RestoreSavedStates(void);
 
    void ProcessButtons(String id, String checked);
 
@@ -63,6 +62,8 @@ public:
    boolean GetButtonState(uint32_t index);
    
    boolean SetButtonState(String state, const uint32_t index);
+
+   String CreateDirectoryName(uint32_t index);
 
 private:
 

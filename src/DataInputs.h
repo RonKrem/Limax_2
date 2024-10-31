@@ -63,43 +63,6 @@ enum  // index for numeric database
 } DBIndex;
 
 
-// Index for numeric database access in jsonscript.
-#define  PERIOD1_MINS         "p1_mins"
-#define  PERIOD1_CMS          "p1_cms"
-#define  PERIOD1_DEGS         "p1_degs"
-#define  PERIOD2_MINS         "p2_mins"
-#define  PERIOD2_CMS          "p2_cms"
-#define  PERIOD2_DEGS         "p2_degs"
-#define  PERIOD3_MINS         "p3_mins"
-#define  PERIOD3_CMS          "p3_cms"
-#define  PERIOD3_DEGS         "p3_degs"
-
-#define  SINE_TIME_MINS       "rt_mins"
-#define  DEEPNESS             "deepness"
-
-#define  TEST_DESCRIPTION     "descrip"
-#define  S1_DESCRIPTION       "detail1"
-#define  S2_DESCRIPTION       "detail2"
-#define  S3_DESCRIPTION       "detail3"
-
-#define  SAMPLE_INTERVAL      "interval"
-
-#define  ACCEL_POWER          "accelpwr"
-#define  DECEL_POWER          "decelpwr"
-#define  RUN_POWER            "runpwr"
-#define  STOP_POWER           "stoppwr"
-#define  DRUM_DIA             "drivedia"
-#define  DRIVE_RATIO          "drvratio"
-
-#define  CONTROLLER_TEMP      "temp"         // not stored
-#define  MOTOR_LIFT_RPM       "rpm"          // not stored
-#define  TEST_ELAPSED_TIME    "etime"
-#define  SWEEP_START          "swstart"
-#define  SWEEP_STOP           "swstop"
-#define  SWEEP_DEPTH          "swdepth"
-#define  SWEEP_PREAMBLE       "swpre"
-#define  SWEEP_TIME_MINS      "swtime"
-
 //-------------------------------------------------------------------
 #define  SENSOR_1_PRESS       "press1"
 #define  SENSOR_1_PRESS_UNIT  "p1unit"
@@ -127,13 +90,24 @@ class CDataInputs
 public:
    CDataInputs(void);
 
-   void PrepareEprom(void);
-
-   void SetInputPaths(void);
+   void RestoreSavedValues(void);
 
    DataEntry GetEntry(uint32_t index) const;
 
-private:  
+   void PutEntry(uint32_t index, String value);
+
+   void MatchAndUpdate(String &name, String &newValue);
+
+   String GetCurrentSpiffsValues(void);
 
    String CreateDirectoryName(uint32_t index);
+
+private:  
+
+   boolean ActionParameter(int index);
+
+private:
+   String         mOldValue;
+   uint32_t       mSampleInterval;  // interval between reading samples
+
 };

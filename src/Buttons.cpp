@@ -3,11 +3,14 @@
 #include "Buttons.h"
 #include "DataInputs.h"
 #include "SDCard.h"
+#include "Eprom.h"
+
 //#include "Motor.h"
 //#include "MotorControl.h"
 
 
 extern CSDCard SDCard; 
+extern CEprom Eprom;
 //extern CMotor Motor;
 //extern CMotorControl MotorControl;
 
@@ -16,16 +19,29 @@ extern CSDCard SDCard;
 //   checked   checked or not (a String)
 //   onText    text shown to turn it ON
 //   offText   text shown to turn it OFF
-//   *path     associated SPIFFS path
-//   saveState state is saved if "T"
+//   State state is saved if "T"
 //   isGPIO    "T" if ID is a GPIO port
 //
 ButtonDetails Button[] = 
 {
-   {  "0", "0", "INVALID",    "INVALID",      NULL, 0},    // zero entry unused
-   {  "1", "0", "UP",         "RUNNING",      NULL, 0},    //  1 motor up
-   {  "2", "0", "STOP",       "STOP",         NULL, 0},    //  2 motor down 
-   {  "3", "0", "DOWN",       "RUNNING",      NULL, STATE_IS_SAVED},    //  3 motor off
+   {  "0", "0", "INVALID",    "INVALID",     0},    // zero entry unused
+   {  "1", "0", "UP",         "RUNNING",     0},    //  1 motor up
+   {  "2", "0", "STOP",       "STOP",        0},    //  2 motor down 
+   {  "3", "0", "DOWN",       "RUNNING",     0},    //  3 motor off
+   {  "4", "0", "CW",         "CCW",         STATE_IS_SAVED},    //  4 motor direction
+   {  "5", "0", "OFF",        "ON",          STATE_IS_SAVED},    //  5 brake overide
+   {  "6", "0", "OFF",        "ON",          STATE_IS_SAVED},    //  6 dynamic depth
+   {  "7", "0", "VIEW",       "ON",          0},    //  7 view data
+   {  "8", "0", "DOWNLOAD",   "ON",          0},    //  8 download data 
+   {  "9", "0", "DELETE",     "ON",          0},    //  9 delete data
+   { "10", "0", "EXCLUDED",   "INCLUDED",    0},    // 10 sine 2 enable
+   { "11", "0", "EXCLUDED",   "INCLUDED",    0},    // 11 sine 3 enable
+   { "12", "0", "START",      "STOP",        0},    // 12 start the test
+   { "13", "0", "START",      "STOP",        0},    // 13 start the quicklook
+   { "14", "0", "START",      "STOP",        0},    // 14 start/stop the sweep
+   { "15", "0", "START",      "STOP",        0},    // 15 sweep quicklook
+   { "16", "0", "LINEAR",   "EXPNTL",        STATE_IS_SAVED},    // 16 linear/exponential
+   { "17", "0", "PLOTS",          "",        0},    // 17 show the 4 place plot
 };
 int NumButtons = sizeof(Button) / sizeof(ButtonDetails);
 
@@ -38,35 +54,35 @@ CButtons::CButtons(void)
 
 //-----------------------------------------------------------------------------
 //
-void CButtons::SetButtonPaths(void)
+void CButtons::RestoreSavedStates(void)
 {
    // Create filenames for those buttons that actually save their state.
    //
    for (int i=0; i < NumButtons; i++)
    {
-      String name;
-      char* pathName;
+//      Serial.printf("%d  ", i);
 
-      Serial.printf("%d  ", i);
-
+      // Only a few buttons have their states saved
       if (Button[i].states & STATE_IS_SAVED)
       {
-         // Using new here is safe as this function is only called once
-         // at program startup.
+         String directory;
+         String entry;
+
+         directory = CreateDirectoryName(i);          // assemble directory name
+         entry = Eprom.ReadFile(directory);   // read value
+
+         // If the name dooes not exists we create a match here.
          //
-         pathName = new char [MAX_PATHNAME_LENGTH];
-         name = Button[i].id;
-         strcpy(pathName, "/Button");
-         strcat(pathName, name.c_str());
-         strcat(pathName, ".txt");
-         Button[i].path = pathName;
-         Serial.printf("%s\n", Button[i].path);
-      }
-      else
-      {
-         Serial.println();
+         if (entry == "NULL")
+         {
+//            Serial.println(entry);
+            Eprom.WriteFile(directory.c_str(), Button[i].checked.c_str());
+         }
+
+         Button[i].checked = entry;
       }
 
+//      Serial.println(Button[i].checked.c_str());
    }
 }
 
@@ -82,10 +98,10 @@ String CButtons::GetButtonStates(void)
    for (int i=0; i<NumButtons - 1; i++)
    {
       myArray["button"][i]["id"] = Button[i+1].id;
-      myArray["button"][i]["checked"] = Button[i+1].state;
+      myArray["button"][i]["checked"] = Button[i+1].checked;
       myArray["button"][i]["onText"] = Button[i+1].onText;
       myArray["button"][i]["offText"] = Button[i+1].offText;
-      Serial.printf("Button %d checked %s\n", i+1, Button[i+1].state.c_str());
+      Serial.printf("Button %d checked %s\n", i+1, Button[i+1].checked.c_str());
    }
 
    String jsonString = JSON.stringify(myArray);
@@ -136,8 +152,8 @@ void CButtons::ProcessButtons(String id, String checked)
          if (Button[i].states & STATE_IS_SAVED)
          {
             Serial.printf(" Recording button: %s state\n", id);
-            SDCard.WriteFile(Button[i].path, state.c_str());
-            Button[i].state = state;
+//            SDCard.WriteFile(Button[i].state.c_str());
+            Button[i].checked = state;
          }
 
          ActionButton(i, checked, state);
@@ -403,21 +419,21 @@ void CButtons::ManageMotorUp(uint32_t index, String state)
       // Request to start the motor going up. Will not be
       // allowed if down button already on.
       //
-      if (Button[index + 1].state != "1")
+      if (Button[index + 1].checked != "1")
       {
-         Button[index].state = state;
+         Button[index].checked = state;
       }
       else
       {
-         Button[index].state = "0";    // ensure off
+         Button[index].checked = "0";    // ensure off
       }
    }
    else
    {
-      Button[index].state = "0";
+      Button[index].checked = "0";
    }
 
-   if (Button[index].state == "1")
+   if (Button[index].checked == "1")
    {
       float speed;
 
@@ -453,21 +469,21 @@ void CButtons::ManageMotorDown(uint32_t index, String state)
       // Request to start the motor going down. Will not be
       // allowed if up button already on.
       //
-      if (Button[index - 1].state != "1")
+      if (Button[index - 1].checked != "1")
       {
-         Button[index].state = state;
+         Button[index].checked = state;
       }
       else
       {
-         Button[index].state = "0";    // ensure off
+         Button[index].checked = "0";    // ensure off
       }
    }
    else
    {
-      Button[index].state = "0";
+      Button[index].checked = "0";
    }
 
-   if (Button[index].state == "1")
+   if (Button[index].checked == "1")
    {
       float speed;
 
@@ -496,7 +512,7 @@ void CButtons::ManageMotorDown(uint32_t index, String state)
 //
 boolean CButtons::GetButtonState(uint32_t index)
 {
-   if (Button[index].state.toInt() == 0)
+   if (Button[index].checked.toInt() == 0)
    {
       return false;
    }
@@ -514,12 +530,26 @@ boolean CButtons::SetButtonState(String state, const uint32_t index)
 {
    if (state == "1")
    {
-      Button[index].state = "1";
+      Button[index].checked = "1";
       return true;
    }
    else
    {
-      Button[index].state = "0";
+      Button[index].checked = "0";
       return false;
    }
+}
+
+//-----------------------------------------------------------------------------
+// Return the DB[i].InputParameter as a directory name.
+//
+String CButtons::CreateDirectoryName(uint32_t index)
+{
+   String name;
+   
+   name = "/Btn_";
+   name += Button[index].id;
+   name += ".st";
+//   Serial.printf("  %s   ", name);
+   return name;
 }
