@@ -1,126 +1,249 @@
 <!DOCTYPE html>
 <html>
-<head>
-   <title>Limax web pages</title>
-   <meta name="viewport" content="width=device-width, initial-scale=1">
-   <link rel="icon" href="data:,">
-   <link rel="stylesheet" type="text/css" href="Style.css">
-   <style>
-      .mygrid {
-         border-style: solid solid solid solid;
-         max-width: 800px;
-         margin: 0 auto;
-         display: grid;
-         text-align: center;
-         grid-template-columns: 1fr 3fr;
-      }
-      .box {
-         font-size: 30px;
-         background-color: lightcyan;
-      }
-      .buttontext {
-         font-size: 20px;
-         font-weight: bold;
-         padding: 1px 1px;
-         background-color: lightcyan
-      }
-      .mytext {
-         font-size: 15px;
-         font-weight: bold;
-         padding: 20px 20px;
-         background-color: lightcyan;
-      }
-      .myinputs {
-         font-size: 25px;
-         font-weight: bold;
-         padding: 10px 10px;
-         background-color: lightcyan;
-      }
-      input[type=text], select 
-      {
-         font-size: 16px;
-         font-weight: bold;
-         text-align: center;
-         width: 100px;
-         height: 30px;
-         display: inline-block;
-         border: 2px solid #000000;
-      }
-      .button {
-         background-color: #4caf50;
-         color: black;
-         width: 180px;
-         padding: 16px 40px;
-         font-size: 30px;
-         font-weight: bold;
-         cursor: pointer;
-         border-radius: 4px;
-      }
-      .button2 {
-         background-color: red;
-      }
-      textarea {
-         font-size: 20px;
-         text-align: left;
-         width: 100%;
-         resize: none;
-      }
+   <head>
+      <title>LIMAX SLUG TESTER</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="icon" href="data:,">
+      <link rel="stylesheet" type="text/css" href="topnavstyle.css">
+      <style>
+         html {
+            font-family: helvetica;
+            text-align: center;
+         }
+         .p {
+            font-size: 10px;
+         }
+         .content {
+            max-width: 700px; 
+            margin: 0 auto;
+         }
+         body {
+            margin: 0 auto;
+            background-color: lightgray;      
+         }
+         .page_title {
+            font-size: 14px;
+            color: darkblue;
+            border: 1px solid;
+         }
+         .myframe {
+            margin: 0 auto;
+            border-radius: 5px;
+            background-color: lightyellow;  
+            box-shadow: 10px 10px 12px 1px rgba(140,140,140,.5);
+            border: 2px solid;
+         }
+         .mygrid {
+            max-width: 700px; 
+            margin: 0 auto;
+            display: grid;
+            grid-gap: 2px;
+            grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+            border: 1px solid;
+         }
+         .box {
+            padding: 15px 1px 10px 1px;
+            font-size: 20px;
+            font-weight: bold;
+         }
+         button {
+            margin: 0 auto;
+            text-align: center;
+            font-size: 25px;
+            font-weight: bold;
+            width: 160px;
+            height: 80px;
+            border-radius: 5px;
+            vertical-align: middle;
+            box-shadow: 5px 5px #999;
+         }
+         button:active {
+            background-color: #3e8e41;
+            box-shadow: 1px 1px #666;
+            transform: translateY(4px);
+         }
 
-   </style>
-</head>
-<body>
-   <div class="topnav" id="myTopnav">
-      <a href="#" class="disabled">SLUG<br>TEST SYSTEM</a>
-      <div class="topnav-right">
-         <a href="/">SLUG<br>POSITIONING</a>
-         <a href="/setup">SITE<br>SETUP</a>
-         <a href="/basicsine">BASIC<br>SINE</a>
-         <a href="/sweep">SINE<br>SWEEP</a>
-         <a href="/plot4">SHOW<br>PLOTS</a>
-         <a href="/datafile">DATA<br>CONTROL</a>
-         <a href="/equipment">EQUIPMENT<br>SETUP</a>
+         .button-up {
+            background-color: green;
+            color: white;
+         }
+         .button-off {
+            background-color: red;
+         }
+         .button-down {
+            background-color: green;
+            color: white;
+         }
+         .numeric {
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+         }
+         .company {
+            padding: 25px;
+            margin: 0 auto;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+         }
+         input[type=text], select {
+            padding: 10px 1px 10px 1px;
+            font-size: 25px;
+            font-weight: bold;
+            text-align: center;
+            width: 100px;
+            height: 10px;
+            border: 2px solid black;
+         }
+         textarea {
+            font-family: consolas;
+            font-size: 20px;
+            text-align: left;
+            font-weight: bold;
+         }
+      </style>
+      <script>
+         const  TEST_DESCRIPTION =    "descrip"
+         const  S1_DESCRIPTION   =    "detail1"
+         const  S2_DESCRIPTION   =    "detail2"
+         const  S3_DESCRIPTION   =    "detail3"
+         const  DATAFILE_NAME    =    "filename"
+
+         window.addEventListener('load', onLoad);
+         window.addEventListener('load', getValues);
+
+         //-------------------------------------------------------------------
+         //
+         function  onLoad(event) {
+            initWebSocket();
+         }
+ 
+         //-------------------------------------------------------------------
+         //
+         function initWebSocket() {
+            console.log('Trying to open a WebSocket connection…');
+            websocket = new WebSocket(gateway);
+            websocket.onopen    = onOpen;
+            websocket.onclose   = onClose;
+            websocket.onmessage = onMessage;
+         }
+         
+         //-------------------------------------------------------------------
+         //
+         function onOpen(event) {
+            console.log('Connection opened');
+         }
+         
+         //-------------------------------------------------------------------
+         //
+         function onClose(event) {
+            console.log('Connection closed');
+            setTimeout(initWebSocket, 2000);
+         }
+         
+         //-------------------------------------------------------------------
+         //
+         function onMessage(event) 
+         {
+            console.log("onMessage");
+            console.log(event.data);
+         }
+
+         //-----------------------------------------------------------------------------
+         // Function to get current readings from the input fields in response to the
+         // webpage being loaded or refreshed.
+         //
+         function getValues() 
+         {
+            var xhr = new XMLHttpRequest();
+
+            console.log("getValues");
+            xhr.onreadystatechange = function () 
+            {
+               if (this.readyState == 4 && this.status == 200)
+               {
+                  // The obj names are defined in CSpiff::GetCurrentInputValues().
+                  //
+                  var obj = JSON.parse(this.responseText);
+                  console.log(obj);
+                  document.getElementById(TEST_DESCRIPTION).value = obj.descrip;
+                  document.getElementById(S1_DESCRIPTION).value   = obj.detail1;
+                  document.getElementById(S2_DESCRIPTION).value   = obj.detail2;
+                  document.getElementById(S3_DESCRIPTION).value   = obj.detail3;
+                  document.getElementById(DATAFILE_NAME).value    = obj.filename;
+               }
+            }; 
+            xhr.open("GET", "/headers", true);
+            xhr.send();
+         }
+      </script>
+   </head>
+
+   <body>
+      <div class="content">
+         <div class="topnav" id="myTopnav">
+            <a href="#" class="disabled">LIMAX SLUG<br>TEST SYSTEM</a>
+            <div class="topnav-right">
+               <a href="/">SLUG<br>POSITIONING</a>
+               <a href="/setup">SITE<br>SETUP</a>
+               <a href="/basicsine">BASIC<br>SINUSOIDAL</a>
+               <a href="/sweep">SWEEP<br>SINUSOIDAL</a>
+               <a href="/plot4">SHOW<br>PLOTS</a>
+               <a href="/datafile">DATA<br>CONTROL</a>
+               <a href="/equipment">EQUIPMENT<br>SETUP</a>
+            </div>
+            <a href="javascript:void(0);" class="icon" onclick="handleNavBar()">
+               <i class="fa fa-bars"></i>
+            </a>
+         </div>
+      
+         <div class="myframe">
+            <div class="page_title">
+               <h1>SITE TEST DETAILS</h1>
+            </div>
+
+            <!-- Row 1 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label>Test Environment Details<br></label>
+                  <textarea id="descrip", name="isheader", cols="50", rows="4", onchange="dataChangeFunction(this)">
+                  </textarea>
+               </div>
+            </div>
+
+            <!-- Row 4 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label>DRIVING WELL Details<br></label>
+                  <textarea id ="detail1", name="isheader", cols="50", rows="3", onchange="dataChangeFunction(this)">
+                  </textarea>
+                  <label><br>OBSERVATION WELL 1 Details<br></label>
+                  <textarea id ="detail2", name="isheader", cols="50", rows="3", onchange="dataChangeFunction(this)">
+                  </textarea>
+                  <label><br>OBSERVATION WELL 2 Details<br></label>
+                  <textarea id ="detail3", name="isheader", cols="50", rows="3", onchange="dataChangeFunction(this)">
+                  </textarea>
+               </div>
+            </div>
+
+            <!-- Row 7 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label>DATA FILE NAME</label>
+                  <textarea id ="filename", name="isheader", cols="25", rows="1", onchange="dataChangeFunction(this)">
+                  </textarea>
+               </div>
+            </div>
+
+            <!-- Row 8 -->
+            <div class="company">
+               <div>
+                  <label>Kremford Pty Ltd</label>
+               </div>
+            </div>
+         </div>
       </div>
-      <a href="javascript:void(0);" class="icon" onclick="handleNavBar()">
-         <i class="fa fa-bars"></i>
-      </a>
-   </div>
-      <h1><br>SITE TEST DETAILS</h1>
-      <div class="myinputs">
-         <label>Enter a description for the test environment.</label>
-         <textarea id="descrip", name="istext", cols="60", rows="4", onchange="dataChangeFunction(this)">
-         </textarea>
-      </div>
-      <div class="myinputs">
-         <label>Enter descriptions for each well.</label>
-      </div>
-      <div class="mygrid">
-         <div class="buttontext">
-            <p>DRIVING WELL</p>
-         </div>
-         <div class="myinputs">
-            <textarea id ="detail_1", name="istext", cols="50", rows="3", onchange="dataChangeFunction(this)">
-            </textarea>
-         </div>
-         <div class="buttontext">
-            <p>OBSERVATION WELL 1</p>
-         </div>
-         <div class="myinputs">
-            <textarea id ="detail_2", name="istext", cols="50", rows="3", onchange="dataChangeFunction(this)">
-            </textarea>
-         </div>
-         <div class="buttontext">
-            <p>OBSERVATION WELL 2</p>
-         </div>
-         <div class="myinputs">
-            <textarea id ="detail_3", name="istext", cols="50", rows="3", onchange="dataChangeFunction(this)">
-            </textarea>
-         </div>
-      </div>
-      <div class="mytext">
-         <div>
-            <label>Kremford Pty Ltd</label>
-         </div>
-      </div>
-   </div>
-</body>
+   </body>
+
+<script src="/newscript.js"></script>
 </html>

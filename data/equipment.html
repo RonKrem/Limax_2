@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>KREMFORD SLUG TESTER</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="icon" href="data:,">
+      <link rel="stylesheet" type="text/css" href="topnavstyle.css">
+   </head>
+   <style>
+      html {
+         font-family: helvetica;
+         text-align: center;
+      }
+      .p {
+         font-size: 10px;
+      }
+      .content {
+         max-width: 700px; 
+         margin: 0 auto;
+      }
+      body {
+         margin: 0 auto;
+         background-color: lightgray;      
+      }
+      .page_title {
+         font-size: 14px;
+         color: darkblue;
+         border: 1px solid;
+      }
+      .myframe {
+         margin: 0 auto;
+         border-radius: 5px;
+         background-color: lightyellow;      
+         box-shadow: 10px 10px 12px 1px rgba(140,140,140,.5);
+         border: 2px solid;
+      }
+      .mygrid {
+         max-width: 700px; 
+         margin: 0 auto;
+         display: grid;
+         grid-gap: 2px;
+         grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+      }
+      .text_box {
+         padding: 10px 10px 10px 10px;
+         background-color: rgb(206, 235, 188);
+         text-align: left;
+      }
+      .box {
+         padding: 1px 10px 20px 1px;
+         font-size: 15px;
+         font-weight: bold;
+      }
+      .column {
+         padding: 1px 10px 20px 1px;
+         font-size: 18px;
+         font-weight: bold;
+      }
+      button {
+         margin: 0 auto;
+         text-align: center;
+         font-size: 18px;
+         font-weight: bold;
+         width: 120px;
+         height: 40px;
+         border-radius: 5px;
+         vertical-align: middle;
+         box-shadow: 5px 5px #999;
+      }
+      button:active {
+         box-shadow: 1px 1px #666;
+      }
+      .button-use {
+         background-color: #3e8e41;
+         color: white;
+      }
+      .numeric {
+         margin: 0 auto;
+         text-align: center;
+         font-size: 25px;
+         font-weight: bold;
+      }
+      .company {
+         background-color: lightyellow;
+         padding: 25px;
+         margin: 0 auto;
+         text-align: center;
+         font-size: 12px;
+         font-weight: bold;
+      }
+      input[type=text], select {
+         background-color: lightblue;
+         padding: 10px 1px 10px 1px;
+         font-size: 25px;
+         font-weight: bold;
+         text-align: center;
+         width: 80px;
+         height: 10px;
+         border: 2px solid black;
+      }
+   </style>
+      <script>
+         // Number inputs.
+         //
+         const  ACCEL_POWER      =    "accelpwr"
+         const  DECEL_POWER      =    "decelpwr"
+         const  RUN_POWER        =    "runpwr"
+         const  STOP_POWER       =    "stoppwr"
+         const  DRUM_DIA         =    "drivedia"
+         const  DRIVE_RATIO      =    "drvratio"
+         const  TEMP             =    "temp"
+         const  MOTOR_LIFT_RPM   =    "rpm"
+
+         // Buttons
+         //
+         const B_DIRECTION             = 4
+         const DIRECTION_ID            = "B_DIRECTION"
+         const B_BRAKE_OVERIDE         = 5
+         const BRAKE_OVERIDE_ID        = "B_BRAKE_OVERIDE"
+         const B_DYNAMIC_DEPTH         = 6                  // button index
+         const DYNAMIC_DEPTH_ID        = "B_DYNAMIC_DEPTH"  // button name
+
+         window.addEventListener('load', onLoad);
+         window.addEventListener('load', getValues);
+         window.addEventListener("DOMContentLoaded", ready);
+
+         function ready(event) {
+            console.log("Ready");
+            document.getElementById(DIRECTION_ID).click();
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function  onLoad(event) {
+            initWebSocket();
+            initButtons();
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function initWebSocket() {
+            console.log('Trying to open a WebSocket connection…');
+            websocket = new WebSocket(gateway);
+            websocket.onopen    = onOpen;
+            websocket.onclose   = onClose;
+            websocket.onmessage = onMessage;
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onOpen(event) {
+            console.log('Connection opened');
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onClose(event) {
+            console.log('Connection closed');
+            setTimeout(initWebSocket, 2000);
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onMessage(event) 
+         {
+            console.log("onMessage: event.data:");
+            var obj = JSON.parse(event.data);  // save JSON data
+            console.log(obj);
+
+            if (obj.text != null)
+            {
+               if (obj.index == B_DYNAMIC_DEPTH)
+               {
+                  console.log(obj.text);
+                  document.getElementById(DYNAMIC_DEPTH_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.color, DYNAMIC_DEPTH_ID);
+               }
+               else if (obj.index == B_BRAKE_OVERIDE)
+               {
+                  console.log(obj.text);
+                  document.getElementById(BRAKE_OVERIDE_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.color, BRAKE_OVERIDE_ID);
+               }
+               else if (obj.index = B_DIRECTION)
+               {
+                  console.log(obj.text);
+                  document.getElementById(DIRECTION_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.color, DIRECTION_ID);
+               }
+            }
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function buttonColor(state, color, identifier)
+         {
+            console.log(state, identifier, color);
+            
+            if (state)
+            {
+               console.log("ON", identifier, color);
+               document.getElementById(identifier).style.backgroundColor = color;
+            }
+            else
+            {
+               console.log("OFF", identifier, color);
+               document.getElementById(identifier).style.backgroundColor = color;
+            }
+         }  
+
+         //-----------------------------------------------------------------------------
+         function initButtons() 
+         {
+            document.getElementById(DYNAMIC_DEPTH_ID).addEventListener('click', dynamicDepth);
+            document.getElementById(BRAKE_OVERIDE_ID).addEventListener('click', brakeOveride);
+            document.getElementById(DIRECTION_ID).addEventListener('click', direction);
+         }
+
+         //-----------------------------------------------------------------------------
+         function dynamicDepth(event) {
+            let t = ["button", DYNAMIC_DEPTH_ID, B_DYNAMIC_DEPTH];
+            console.log(t);
+            websocket.send(t);
+         }
+
+         //-----------------------------------------------------------------------------
+         function brakeOveride(event) {
+            let t = ["button", BRAKE_OVERIDE_ID, B_BRAKE_OVERIDE];
+            console.log(t);
+            websocket.send(t);
+         }
+
+         //-----------------------------------------------------------------------------
+         function direction(event) {
+            let t = ["button", DIRECTION_ID, B_DIRECTION];
+            console.log(t);
+            websocket.send(t);
+         }
+
+         //-----------------------------------------------------------------------------
+         // Create an event source to listen for events.
+         //
+         if (!!window.EventSource) 
+         {
+            var source = new EventSource('/events');
+
+            source.addEventListener('open', function(e) 
+            {
+               console.log("Events connected");
+            }, false);
+
+            source.addEventListener('error', function(e)
+            {
+               if (e.target.readyState != EventSource.OPEN)
+               {
+                  console.log("Events disconnected");
+               }
+            }, false);
+
+            source.addEventListener('new_values', function(e)
+            {
+               console.log("new_values");
+               var obj = JSON.parse(e.data);
+               console.log(obj);
+               document.getElementById(TEMP).innerHTML     = obj.temp;
+            }, false);
+
+            //-------------------------------------------------------------------
+            //
+            source.addEventListener('message', function(e) 
+            {
+               console.log("message");
+//               console.log(e.data);
+
+               var obj = JSON.parse(e.data);  // save JSON data
+               console.log(obj);
+               for (let i=0; i < obj.entries; i++)
+               {
+                  let index = "button" + i;
+//                  console.log(index);
+//                  console.log(obj[index]);
+                  var line = JSON.parse(obj[index]);
+//                  console.log(line);
+                  if (line.index == B_DYNAMIC_DEPTH || line.index == B_BRAKE_OVERIDE || line.index == B_DIRECTION)
+                  {
+                     document.getElementById(line.entry).innerHTML = line.text;
+                     document.getElementById(line.entry).style.backgroundColor = line.color;
+                  }
+               }
+            }, false);
+
+         }
+         
+         //-----------------------------------------------------------------------------
+         // Function to get current readings from the input fields in response to the
+         // webpage being loaded or refreshed.
+         //
+         function getValues() 
+         {
+            var xhr = new XMLHttpRequest();
+
+            console.log("getValues");
+            xhr.onreadystatechange = function () 
+            {
+               if (this.readyState == 4 && this.status == 200)
+               {
+                  // The obj names are defined in CSpiff::GetCurrentInputValues().
+                  //
+                  var obj = JSON.parse(this.responseText);
+                  console.log(obj);
+                  document.getElementById(ACCEL_POWER).value =    obj.accelpwr;
+                  document.getElementById(DECEL_POWER).value =    obj.decelpwr;
+                  document.getElementById(RUN_POWER).value =      obj.runpwr;
+                  document.getElementById(STOP_POWER).value =     obj.stoppwr;
+                  document.getElementById(DRUM_DIA).value =       obj.drivedia;
+                  document.getElementById(DRIVE_RATIO).value =    obj.drvratio;
+                  document.getElementById(TEMP).innerHTML =       obj.temp;
+               }
+            }; 
+         xhr.open("GET", "/values", true);
+         xhr.send();
+         }
+      </script>
+
+   <body>
+      <div class="content">
+         <div class="topnav" id="myTopnav">
+            <a href="#" class="disabled">LIMAX SLUG<br>TEST SYSTEM</a>
+            <div class="topnav-right">
+               <a href="/">SLUG<br>POSITIONING</a>
+               <a href="/setup">SITE<br>SETUP</a>
+               <a href="/basicsine">BASIC<br>SINUSOIDAL</a>
+               <a href="/sweep">SWEEP<br>SINUSOIDAL</a>
+               <a href="/plot4">SHOW<br>PLOTS</a>
+               <a href="/datafile">DATA<br>CONTROL</a>
+               <a href="/equipment">EQUIPMENT<br>SETUP</a>
+            </div>
+            <a href="javascript:void(0);" class="icon" onclick="handleNavBar()">
+               <i class="fa fa-bars"></i>
+            </a>
+         </div>
+      
+         <div class="myframe">
+            <div class="page_title">
+               <h1>LIMAX EQUIPMENT SETUP</h1>
+            </div>
+
+            <!-- Row 1 -->
+            <div class="mygrid">
+               <div class="column">
+                  <label>MOTOR CONTROLLER SETTINGS</label>
+               </div>
+               <div class="column">
+                  <label>LIMAX SETTINGS</label>
+               </div>
+               <div class="column">
+                  <label>WINCH SETTINGS</label>
+               </div>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="mygrid">
+               <div class="box">
+                     <label>ACCEL PWR<br></label>
+                     <input type="text", id="accelpwr", name="isnumber", min="1", max="100", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                     <label>INTERNAL TEMP<br><br></label>
+                     <span id="temp"></span><label> C</label><br>
+               </div>
+               <div class="box">
+                     <label>DRIVE DIAMETER<br></label>
+                     <input type="text", id="drivedia", name="isnumber", min="1", max="50", onchange="dataChangeFunction(this)">
+               </div>
+            </div>
+
+            <!-- Row 3 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label>DECEL PWR<br></label>
+                  <input type="text", id="decelpwr", name="isnumber", min="1", max="100", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label>DYNAMIC DEPTH<br></label>
+                  <button class="button-use" id=B_DYNAMIC_DEPTH><span id="DEPTH">%DYNAMIC_DEPTH_ID%</span></button>
+               </div>
+               <div class="box">
+                  <label>GEAR RATIO<br></label>
+                  <input type="text", id="drvratio", name="isnumber", min="1", max="5", onchange="dataChangeFunction(this)">
+               </div>
+            </div>
+
+            <!-- Row 4 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label>RUN PWR<br></label>
+                  <input type="text", id="runpwr", name="isnumber", min="1", max="100", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label>BRAKE OVERIDE<br></label>
+                  <button class="button-use" id=B_BRAKE_OVERIDE><span id="BRAKEOVERIDE">%BRAKE_OVERIDE_ID%</span></button>
+               </div>
+               <div class="box-shadow">
+                  <label>DIRECTION OVERIDE<br></label>
+                  <button class="button-use" id=B_DIRECTION><span id="DIROVERIDE">%DIRECTION_ID%</span></button>
+               </div>
+            </div>
+
+            <!-- Row 5 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label>STOP PWR<br></label>
+                  <input type="text", id="stoppwr", name="isnumber", min="1", max="100", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label><br></label>
+               </div>
+               <div class="box">
+                  <label><br></label>
+               </div>
+            </div>
+
+            <!-- Row 6 -->
+            <div class="company">
+               <div>
+                  <label>Kremford Pty Ltd</label>
+               </div>
+            </div>
+         </div>
+      </div>
+   </body>
+
+<script src="/newscript.js"></script>
+</html>

@@ -11,16 +11,17 @@ QwiicTransparentOLED myOLED;
 //
 CLedScreen::CLedScreen(void)
 {
-   mPage[0] = "1";
-   mPage[1] = "2";
-   mPage[2] = "3";
-   mPage[3] = "4";
+   mPage[0] = "";
+   mPage[1] = "";
+   mPage[2] = "";
+   mPage[3] = "";
 }
 
 //-------------------------------------------------------------------
 //
 void CLedScreen::Init(void)
 {
+#ifdef LED_SCREEN   
    // Start the OLED display.  
    if (!myOLED.begin(Wire, 0x3d))
    {
@@ -33,19 +34,22 @@ void CLedScreen::Init(void)
    myOLED.display();
    myOLED.setFont(&QW_FONT_8X16);
    
-   DisplayPage();
+//   DisplayPage();
+#endif
 }
 
 //-------------------------------------------------------------------
 //
 void CLedScreen::DisplayPage(void)
 {
+#ifdef LED_SCREEN   
     myOLED.erase();
     myOLED.text(0,  0, mPage[0]);
     myOLED.text(0, 16, mPage[1]);
     myOLED.text(0, 32, mPage[2]);
     myOLED.text(0, 48, mPage[3]);
     myOLED.display();
+#endif
 }
 
 //-------------------------------------------------------------------

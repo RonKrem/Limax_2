@@ -13,11 +13,13 @@ public:
 
    int Begin();
 
-   void ListDir(const char *dirname, uint8_t levels) ;
+   void ListDir(const char *dirname, uint8_t levels);
 
-   String ReadFile(String path) ;
+   String ReadFile(const String path);
 
-   FileStateType WriteFile(String path, String message) ;
+   FileStateType WriteFile(const String path, const String message);
+
+   FileStateType DeleteFile(const String path);
 
    void PrepareEprom(void);
 

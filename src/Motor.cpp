@@ -13,7 +13,7 @@
 ******************************************************************************/
 
 #include "Motor.h"
-#include "DataInputs.h"
+#include "Data.h"
 #include "Buttons.h"
 
 
@@ -73,7 +73,7 @@
 
 extern CMotor Motor;         // ourself
 extern SPIClass theSPI;        // SPI
-extern CDataInputs DataInputs;
+extern CData Data;
 extern CButtons Buttons;
 
 // Registers and the number of bytes required. This table
@@ -127,7 +127,8 @@ CMotor::CMotor(void)
    mFirstTime = true;
    mAccelRate = 1000;
    mDecelRate = 1000;
-   spiClk = 100000;
+//   spiClk = 100000;
+   spiClk = 2000000;    // sets the SPI clock speed
    mSpeedRevsPerSec = 0;
 }
 
@@ -196,7 +197,7 @@ uint32_t CMotor::GetParam(uint16_t theRegister)
 
 //-----------------------------------------------------------------------------
 //
-int32_t CMotor::FloatToInt32(float value)
+int32_t CMotor::FloatToInt32(float value) const
 {
    return (int32_t)(value + 0.5);
 }
@@ -245,28 +246,28 @@ void CMotor::SoftStop(void)
 //
 void CMotor::SetRunPwr(uint32_t value) 
 {
-   SetParam(TVAL_RUN, Set_TVAL_X_Value((uint32_t)DataInputs.GetEntry(DB_RUN_POWER).HtmlValue.toInt()));    // run power
+   SetParam(TVAL_RUN, Set_TVAL_X_Value((uint32_t)Data.GetDataEntry(DB_RUN_POWER).HtmlValue.toInt()));    // run power
 }
 
 //-----------------------------------------------------------------------------
 //
 void CMotor::SetStoppedPwr(uint32_t value) 
 {
-   SetParam(TVAL_HOLD, Set_TVAL_X_Value((uint32_t)DataInputs.GetEntry(DB_STOP_POWER).HtmlValue.toInt()));   // hold power
+   SetParam(TVAL_HOLD, Set_TVAL_X_Value((uint32_t)Data.GetDataEntry(DB_STOP_POWER).HtmlValue.toInt()));   // hold power
 }
 
 //-----------------------------------------------------------------------------
 //
 void CMotor::SetAccelPwr(uint32_t value) 
 {
-   SetParam(TVAL_ACC, Set_TVAL_X_Value((uint32_t)DataInputs.GetEntry(DB_ACCEL_POWER).HtmlValue.toInt()));    // accel power
+   SetParam(TVAL_ACC, Set_TVAL_X_Value((uint32_t)Data.GetDataEntry(DB_ACCEL_POWER).HtmlValue.toInt()));    // accel power
 }
 
 //-----------------------------------------------------------------------------
 //
 void CMotor::SetDecelPwr(uint32_t value) 
 {
-   SetParam(TVAL_DEC, Set_TVAL_X_Value((uint32_t)DataInputs.GetEntry(DB_DECEL_POWER).HtmlValue.toInt()));    // decel power
+   SetParam(TVAL_DEC, Set_TVAL_X_Value((uint32_t)Data.GetDataEntry(DB_DECEL_POWER).HtmlValue.toInt()));    // decel power
 }
 
 //-----------------------------------------------------------------------------
@@ -285,7 +286,7 @@ void CMotor::SetDecelRate(uint32_t value)
 
 //-----------------------------------------------------------------------------
 //
-uint32_t CMotor::RPStoSPS(uint32_t rps)
+uint32_t CMotor::RPStoSPS(uint32_t rps) const
 {
    uint32_t sps;
 
@@ -339,24 +340,20 @@ void CMotor::SetWinchSpeedRPM(int32_t rpm)
 
 //-----------------------------------------------------------------------------
 //
-float CMotor::GetWinchSpeed(void)
+float CMotor::GetWinchSpeed(void) const
 {
    return mSpeedRevsPerSec;
 }
 
 //-----------------------------------------------------------------------------
 // Run motor using the tick rate at a given turns per second.
+// A negative speed implies gong DOWN.
 //
 void CMotor::RunMotorAtRevsPerSec(float revsPerSec)
 {
    float tickRate;
 
    tickRate = revsPerSec * 67.108864 * MOTOR_STEPS;
-
-   if (Buttons.GetButtonState(BUTTON_DIRECTION))
-   {
-      tickRate = -tickRate;
-   }
 
    RunAtTickRate(tickRate);
 }
@@ -386,7 +383,7 @@ int16_t CMotor::CheckStepBoundaries(int16_t value)
 //
 void CMotor::RunAtSPS(uint32_t stepsPerSec)
 {
-   P_MOTR(Serial.printf("StepsPerSec %d\n",stepsPerSec));
+   Serial.printf("StepsPerSec %d\n",stepsPerSec);
    if (stepsPerSec > 0)
    {
       Run(StepsPerSecondToChipSpeed(stepsPerSec));     // change to motor speed
@@ -415,6 +412,7 @@ void CMotor::RunAtSPS(uint32_t stepsPerSec)
 // }
 
 //-----------------------------------------------------------------------------
+// Range is 0 - 4
 //
 void CMotor::SetStepMode(int16_t mode)
 {
@@ -451,26 +449,26 @@ uint32_t CMotor::GetMotorStatus(void)
    return retval;
 }
 
-// //-----------------------------------------------------------------------------
-// // The <speed> parameter is in steps/second.
-// //
-// void CMotor::Run(uint32_t speed)
-// {
-//    SpiCommandType command;
+//-----------------------------------------------------------------------------
+// The <speed> parameter is in steps/second.
+//
+void CMotor::Run(uint32_t speed)
+{
+   SpiCommandType command;
 
-//    Serial.printf("Speed %d\n", speed);
+   Serial.printf("StepsPerTick %d\n", speed);
 
-//    ClearSpiMessage(&command);
-//    command.command = PWRSTP_RUN;
-//    if (Button[BUTTON_DIRECTION].state)
-//    {
-//       command.command |= 1;
-//    }
-//    command.bytes = 3;
-//    command.flag.sendParam = true;
-//    command.outValue = (speed & 0xfffff);
-//    SendSpiCommand(&command);
-// }
+   ClearSpiMessage(&command);
+   command.command = PWRSTP_RUN;
+   if (Buttons.GetBooleanState(B_DIRECTION))
+   {
+      command.command |= 1;
+   }
+   command.bytes = 3;
+   command.flag.sendParam = true;
+   command.outValue = (speed & 0xfffff);
+   SendSpiCommand(&command);
+}
 
 //-----------------------------------------------------------------------------
 //
@@ -638,7 +636,7 @@ uint32_t CMotor::Set_TVAL_X_Value(uint32_t value)
 
 //-----------------------------------------------------------------------------
 //
-void CMotor::ClearSpiMessage(SpiCommandPtr ptr)
+void CMotor::ClearSpiMessage(const SpiCommandPtr ptr)
 {
    memset((void*)ptr, 0, sizeof(SpiCommandType));
 }
@@ -710,12 +708,12 @@ void CMotor::SendSpiCommand(SpiCommandPtr commPtr)
    }
 
 
-   P_MOTR(Serial.printf("Count: %d\n", count));
-   for (i=0; i<count; i++)
-   {
-      P_MOTR(Serial.printf("%02X  ", mPwrStpTxBuffer[i]));
-   }
-   P_MOTR(Serial.println(" "));
+   // Serial.printf("Count: %d  ", count);
+   // for (i=0; i<count; i++)
+   // {
+   //    Serial.printf("%02X  ", mPwrStpTxBuffer[i]);
+   // }
+   // Serial.println("");
    
 
    // Copy the buffer into the SPI's buffer.
@@ -749,7 +747,7 @@ void CMotor::SendSpiCommand(SpiCommandPtr commPtr)
 // Send a command a byte at a time. The <index> is used to specify into which
 // output byte any reply to this command must go. Does not use interrupts.
 //
-uint32_t CMotor::SendSpiByte(uint8_t* ptr)
+uint32_t CMotor::SendSpiByte(const uint8_t* ptr)
 {
    uint8_t retVal;
 
@@ -870,19 +868,19 @@ void CMotor::ConfigureDefaultPowerstep(void)
 
    // x0000100
    //  ^^^^^^^ holding current, range is 0-127, 127 = 30A => 42=10A, range here is 0-42
-   SetParam(TVAL_HOLD, Set_TVAL_X_Value(DataInputs.GetEntry(DB_STOP_POWER).HtmlValue.toInt()));
+   SetParam(TVAL_HOLD, Set_TVAL_X_Value(Data.GetDataEntry(DB_STOP_POWER).HtmlValue.toInt()));
 
    // x0010010
    //  ^^^^^^^ run current, range is 0-127, 127 = 30A => 42=10A, range here is 0-42
-   SetParam(TVAL_RUN, Set_TVAL_X_Value(DataInputs.GetEntry(DB_RUN_POWER).HtmlValue.toInt()));
+   SetParam(TVAL_RUN, Set_TVAL_X_Value(Data.GetDataEntry(DB_RUN_POWER).HtmlValue.toInt()));
 
    // x0011001
    //  ^^^^^^^ accel current, range is 0-127, 127 = 30A => 42=10A, range here is 0-42
-   SetParam(TVAL_ACC, Set_TVAL_X_Value(DataInputs.GetEntry(DB_ACCEL_POWER).HtmlValue.toInt()));
+   SetParam(TVAL_ACC, Set_TVAL_X_Value(Data.GetDataEntry(DB_ACCEL_POWER).HtmlValue.toInt()));
 
    // x0011001
    //  ^^^^^^^ decel current, range is 0-127, 127 = 30A => 42=10A, range here is 0-42
-   SetParam(TVAL_DEC, Set_TVAL_X_Value(DataInputs.GetEntry(DB_DECEL_POWER).HtmlValue.toInt()));
+   SetParam(TVAL_DEC, Set_TVAL_X_Value(Data.GetDataEntry(DB_DECEL_POWER).HtmlValue.toInt()));
 
    // xxx0 0001 0100 1000
    //    ^ ^^^^ ^^^^ ^^^^  max speed   328  => 5000 * 0.065536 = 328

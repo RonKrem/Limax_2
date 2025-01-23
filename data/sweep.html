@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>KREMFORD SLUG TESTER</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="icon" href="data:,">
+      <link rel="stylesheet" type="text/css" href="topnavstyle.css">
+      <style>
+         html {
+            font-family: helvetica;
+            text-align: center;
+         }
+         .p {
+            font-size: 10px;
+         }
+         .content {
+            max-width: 700px; 
+            margin: 0 auto;
+         }
+         body {
+            margin: 0 auto;
+            background-color: lightblue;      
+         }
+         .page_title {
+            font-size: 14px;
+            color: darkblue;
+            border: 1px solid;
+         }
+         .myframe {
+            margin: 0 auto;
+            border-radius: 5px;
+            background-color: lightyellow;      
+            box-shadow: 10px 10px 12px 1px rgba(140,140,140,.5);
+            border: 2px solid;
+         }
+         .mygrid {
+            max-width: 700px; 
+            margin: 0 auto;
+            display: grid;
+            grid-gap: 2px;
+            grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+            border: 2px solid;
+         }
+         .text_box {
+            padding: 10px 10px 10px 10px;
+            background-color: rgb(206, 235, 188);
+            text-align: left;
+         }
+         .box {
+            padding: 1px 10px 20px 1px;
+            font-size: 15px;
+            font-weight: bold;
+         }
+         button {
+            margin: 0 auto;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            width: 120px;
+            height: 40px;
+            border-radius: 5px;
+            vertical-align: middle;
+            box-shadow: 5px 5px #999;
+         }
+         button:active {
+            box-shadow: 1px 1px #666;
+         }
+         .button-use {
+            background-color: #3e8e41;
+            color: white;
+         }
+         .numeric {
+            margin: 0 auto;
+            text-align: center;
+            font-size: 25px;
+            font-weight: bold;
+         }
+         .company {
+            background-color: lightyellow;
+            padding: 25px;
+            margin: 0 auto;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+         }
+         input[type=text], select {
+            background-color: lightblue;
+            padding: 10px 1px 10px 1px;
+            font-size: 25px;
+            font-weight: bold;
+            text-align: center;
+            width: 80px;
+            height: 10px;
+            border: 2px solid black;
+         }
+      </style>
+      <script>
+         // Number inputs.
+         //
+         const TEST_ELASED_TIME     =  "etime"
+         const SWEEP_START          =  "swstart"
+         const SWEEP_STOP           =  "swstop"
+         const SWEEP_DEPTH          =  "swdepth"
+         const SWEEP_PREAMBLE       =  "swpre"
+         const SWEEP_TIME_MINS      =  "swtime"
+
+         const TEST_ELAPSED_TIME    =  "etime"
+
+         const SENSOR_1_PRESS       =  "press1"
+         const SENSOR_1_PRESS_UNIT  =  "p1unit"
+         const SENSOR_1_TEMP        =  "temp1"
+         const SENSOR_1_TEMP_UNIT   =  "t1unit"
+
+         const SENSOR_2_PRESS       =  "press2"
+         const SENSOR_2_PRESS_UNIT  =  "p2unit"
+         const SENSOR_2_TEMP        =  "temp2"
+         const SENSOR_2_TEMP_UNIT   =  "t2unit"
+
+         const SENSOR_3_PRESS       =  "press3"
+         const SENSOR_3_PRESS_UNIT  =  "p3unit"
+         const SENSOR_3_TEMP        =  "temp3"
+         const SENSOR_3_TEMP_UNIT   =  "t3unit"
+
+         const SAMPLE_INTERVAL      =  "interval"
+
+         // Buttons.
+         //
+         const B_SWEEP_CONTROL      =  14
+         const START_SWEEP_ID       =  "B_SWEEP_CONTROL"   
+         const B_LIN_EXP            =  16
+         const LIN_EXP_ID           =  "B_LIN_EXP"   
+
+         window.addEventListener('load', onLoad);
+         window.addEventListener('load', getValues);
+
+         //-------------------------------------------------------------------
+         //
+         function  onLoad(event) {
+            initWebSocket();
+            initButtons();
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function initWebSocket() {
+            console.log('Trying to open a WebSocket connection…');
+            websocket = new WebSocket(gateway);
+            websocket.onopen    = onOpen;
+            websocket.onclose   = onClose;
+            websocket.onmessage = onMessage;
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onOpen(event) {
+            console.log('Connection opened');
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onClose(event) {
+            console.log('Connection closed');
+            setTimeout(initWebSocket, 2000);
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onMessage(event) 
+         {
+            console.log("onMessage: event.data:");
+            console.log(event.data);
+            var obj = JSON.parse(event.data);  // save JSON data
+            console.log(obj);
+
+            if (obj.text != null)
+            {
+               if (obj.index == B_SWEEP_CONTROL)
+               {
+                  console.log(obj.text);
+                  document.getElementById(START_SWEEP_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.color, START_SWEEP_ID);
+               }
+               else if (obj.index = B_LIN_EXP)
+               {
+                  console.log(obj.text);
+                  document.getElementById(LIN_EXP_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.color, LIN_EXP_ID);
+               }
+            }
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function buttonColor(state, color, identifier)
+         {
+            console.log(state, identifier, color);
+            
+            if (state)
+            {
+               console.log("ON", identifier, color);
+               document.getElementById(identifier).style.backgroundColor = color;
+            }
+            else
+            {
+               console.log("OFF", identifier, color);
+               document.getElementById(identifier).style.backgroundColor = color;
+            }
+         }  
+
+         //-----------------------------------------------------------------------------
+         function initButtons() 
+         {
+            document.getElementById(START_SWEEP_ID).addEventListener('click', exclude1);
+            document.getElementById(LIN_EXP_ID).addEventListener('click', exclude2);
+         }
+
+         //-----------------------------------------------------------------------------
+         function exclude1(event) {
+            let t = ["button", START_SWEEP_ID, B_SWEEP_CONTROL];
+            console.log(t);
+            websocket.send(t);
+         }
+
+         //-----------------------------------------------------------------------------
+         function exclude2(event) {
+            let t = ["button", LIN_EXP_ID, B_LIN_EXP];
+            console.log(t);
+            websocket.send(t);
+         }
+
+         //-----------------------------------------------------------------------------
+         // Create an event source to listen for events.
+         //
+         if (!!window.EventSource) 
+         {
+            var source = new EventSource('/events');
+
+            source.addEventListener('open', function(e) 
+            {
+               console.log("Events connected");
+            }, false);
+
+            source.addEventListener('error', function(e)
+            {
+               if (e.target.readyState != EventSource.OPEN)
+               {
+                  console.log("Events disconnected");
+               }
+            }, false);
+
+            source.addEventListener('new_values', function(e)
+            {
+               console.log("new_values");
+               var obj = JSON.parse(e.data);
+               document.getElementById(TEST_ELASED_TIME).innerHTML      = obj.etime;
+               
+               document.getElementById(SENSOR_1_PRESS).innerHTML        = obj.press1;
+               document.getElementById(SENSOR_1_PRESS_UNIT).innerHTML   = obj.p1unit;
+
+               document.getElementById(SENSOR_2_PRESS).innerHTML        = obj.press2;
+               document.getElementById(SENSOR_2_PRESS_UNIT).innerHTML   = obj.p2unit;
+
+               document.getElementById(SENSOR_3_PRESS).innerHTML        = obj.press3;
+               document.getElementById(SENSOR_3_PRESS_UNIT).innerHTML   = obj.p3unit;
+
+            }, false);
+
+            //-------------------------------------------------------------------
+            //
+            source.addEventListener('message', function(e) 
+            {
+               console.log("message");
+//               console.log(e.data);
+
+               var obj = JSON.parse(e.data);  // save JSON data
+//               console.log(obj);
+               for (let i=0; i < obj.entries; i++)
+               {
+                  let index = "button" + i;
+//                  console.log(index);
+//                  console.log(obj[index]);
+                  var line = JSON.parse(obj[index]);
+//                  console.log(line);
+                  if (line.index == B_SWEEP_CONTROL || line.index == B_LIN_EXP)
+                  {
+                     document.getElementById(line.entry).innerHTML = line.text;
+                     document.getElementById(line.entry).style.backgroundColor = line.color;
+                  }
+               }
+            }, false);
+
+         }
+         
+         //-----------------------------------------------------------------------------
+         // Function to get current readings from the input fields in response to the
+         // webpage being loaded or refreshed.
+         //
+         function getValues() 
+         {
+            var xhr = new XMLHttpRequest();
+
+            console.log("getValues");
+            xhr.onreadystatechange = function () 
+            {
+               if (this.readyState == 4 && this.status == 200)
+               {
+                  // The obj names are defined in CSpiff::GetCurrentInputValues().
+                  //
+                  var obj = JSON.parse(this.responseText);
+                  console.log(obj);
+
+                  document.getElementById(SWEEP_START).value               = obj.swstart;
+                  document.getElementById(SWEEP_STOP).value                = obj.swstop;
+                  document.getElementById(SWEEP_DEPTH).value               = obj.swdepth;
+                  document.getElementById(SWEEP_PREAMBLE).value            = obj.swpre;
+                  document.getElementById(SWEEP_TIME_MINS).value           = obj.swtime;
+
+                  document.getElementById(SENSOR_1_PRESS).innerHTML        = obj.press1;
+                  document.getElementById(SENSOR_1_PRESS_UNIT).innerHTML   = obj.p1unit;
+//                  document.getElementById(SENSOR_1_TEMP).innerHTML         = obj.temp1;
+//                  document.getElementById(SENSOR_1_TEMP_UNIT).innerHTML    = obj.t1unit;
+
+                  document.getElementById(SENSOR_2_PRESS).innerHTML        = obj.press2;
+                  document.getElementById(SENSOR_2_PRESS_UNIT).innerHTML   = obj.p2unit;
+//                  document.getElementById(SENSOR_2_TEMP).innerHTML         = obj.temp2;
+//                  document.getElementById(SENSOR_2_TEMP_UNIT).innerHTML    = obj.t2unit;
+
+                  document.getElementById(SENSOR_3_PRESS).innerHTML        = obj.press3;
+                  document.getElementById(SENSOR_3_PRESS_UNIT).innerHTML   = obj.p3unit;
+//                  document.getElementById(SENSOR_3_TEMP).innerHTML         = obj.temp3;
+//                  document.getElementById(SENSOR_3_TEMP_UNIT).innerHTML    = obj.t3unit;
+
+                  document.getElementById(TEST_ELAPSED_TIME).innerHTML     = obj.etime;
+               }
+            }; 
+         xhr.open("GET", "/values", true);
+         xhr.send();
+         }
+      </script>
+      </head>
+
+   <body>
+      <div class="content">
+         <div class="topnav" id="myTopnav">
+            <a href="#" class="disabled">LIMAX SLUG<br>TEST SYSTEM</a>
+            <div class="topnav-right">
+               <a href="/">SLUG<br>POSITIONING</a>
+               <a href="/setup">SITE<br>SETUP</a>
+               <a href="/basicsine">BASIC<br>SINUSOIDAL</a>
+               <a href="/sweep">SWEEP<br>SINUSOIDAL</a>
+               <a href="/plot4">SHOW<br>PLOTS</a>
+               <a href="/datafile">DATA<br>CONTROL</a>
+               <a href="/equipment">EQUIPMENT<br>SETUP</a>
+            </div>
+            <a href="javascript:void(0);" class="icon" onclick="handleNavBar()">
+               <i class="fa fa-bars"></i>
+            </a>
+         </div>
+         <div class="myframe">
+            <div class="page_title">
+               <h1>SINE SWEEP CONTROL</h1>
+            </div>
+
+            <!-- Row 1 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>SET CYCLE PERIODS FOR START AND FINISH</label>
+               </div>
+               <div class="box">
+                  <label><br>START PERIOD (MINS)<br></label>
+                  <input type="text", id="swstart", name="isnumber", min="1", max="50", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label><br>FINISH PERIOD (MINS)<br></label>
+                  <input type="text", id="swstop", name="isnumber", min="2", max="50", onchange="dataChangeFunction(this)">
+               </div>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>SET SLUG MAX DEPTH AND TEST TIME</label>
+               </div>
+               <div class="box">
+                  <label><br>DEPTH (M)<br></label>
+                  <input type="text", id="swdepth", name="isnumber", min="1", max="5000", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label><br>TEST DURATION (MINS)<br></label>
+                  <input type="text", id="swtime", name="isnumber", min="1", max="360", onchange="dataChangeFunction(this)">
+               </div>
+            </div>
+
+            <!-- Row 3 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>PREAMBLE HALF CYCLES</label>
+                  <input type="text", id="swpre", name="isnumber", min="1", max="1200", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label><br>LINEAR OR EXPONENTIAL<br></label>
+                  <button class="button-use" id="B_LIN_EXP"><span id="LINEX">%STATE_LIN_EXP%</span></button>
+               </div>
+               <div class="box">
+                  <label><br>TEST CONTROL<br></label>
+                  <button class="button-use" id="B_SWEEP_CONTROL"><span id="STRTSW">%STATE_SW_ON%</span></button>
+               </div>
+            </div>
+
+            <!-- Row 4 -->
+
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>RUNTIME (MINS)<br></label>
+                  <span id="etime"></span><br>
+               </div>
+               <div class="box">
+                  <label><br>SENSOR 1<br></label>
+                  <span id="press1"></span><span id="p1unit"></span><br>
+                  <span id="temp1"></span><span id="t1unit"></span>
+               </div>
+               <div class="box">
+                  <label><br>SENSOR 2<br></label>
+                  <span id="press2"></span><span id="p2unit"></span><br>
+                  <span id="temp2"></span><span id="t2unit"></span>
+               </div>
+               <div class="box">
+                  <label><br>SENSOR 3<br></label>
+                  <span id="press3"></span><span id="p3unit"></span><br>
+                  <span id="temp3"></span><span id="t3unit"></span>
+               </div>
+            </div>
+
+            <!-- Row 7 -->
+            <div class="company">
+               <div>
+                  <label>Kremford Pty Ltd</label>
+               </div>
+            </div>
+         </div>
+      </div>
+   </body>
+
+<script src="/newscript.js"></script>
+</html>

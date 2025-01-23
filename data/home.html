@@ -1,129 +1,328 @@
 <!DOCTYPE html>
 <html>
-<head>
-   <title>Limax web pages</title>
-   <meta name="viewport" content="width=device-width, initial-scale=1">
-   <link rel="icon" href="data:,">
-   <link rel="stylesheet" type="text/css" href="style.css">
-   <style>
-      .mygrid {
-         border-style: solid none solid solid;
-         max-width: 800px;
-         margin: 0 auto;
-         display: grid;
-         text-align: center;
-         grid-template-columns: 1fr 1fr 1fr;
-      }
-      .box {
-         border-style: none solid none none;
-         font-size: 30px;
-         background-color: lightblue;
-      }
-      .buttontext {
-         border-style: none solid none none;
-         font-size: 30px;
-         font-weight: bold;
-         padding: 1px 1px;
-         background-color: lightblue
-      }
-      .mytext {
-         font-size: 15px;
-         font-weight: bold;
-         padding: 20px 20px;
-         background-color: lightcyan;
-      }
-      .numeric {
-         font-size: 25px;
-         font-weight: bold;
-         padding: 10px 10px;
-         background-color: lightcyan;
-      }
-      input[type=text], select 
-      {
-         font-size: 16px;
-         font-weight: bold;
-         text-align: center;
-         width: 100px;
-         height: 30px;
-         display: inline-block;
-         border: 2px solid #000000;
-      }
-      .button {
-         background-color: #4caf50;
-         color: black;
-         width: 180px;
-         height: 90px;
-         padding: 16px 40px;
-         font-size: 30px;
-         font-weight: bold;
-         cursor: pointer;
-         border-radius: 4px;
-      }
-      .button2 {
-         background-color: red;
-      }
-      .switch {
-         position: relative; 
-         display: inline-block; 
-         width: 120px; 
-         height: 40px;
-      } 
+   <head>
+      <title>LIMAX SLUG TESTER</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="icon" href="data:,">
+      <link rel="stylesheet" type="text/css" href="topnavstyle.css">
+      
+      <style>
+         html {
+            font-family: helvetica;
+            text-align: center;
+         }
+         .p {
+            font-size: 10px;
+         }
+         .content {
+            max-width: 700px; 
+            margin: 0 auto;
+         }
+         body {
+            margin: 0 auto;
+            background-color: lightgray;      
+         }
+         .page_title {
+            margin: 0 auto;
+            max-width: 700px; 
+            font-size: 14px;
+            color: darkblue;
+            border: 1px solid;
+         }
+         .myframe {
+            margin: 0 auto;
+            border-radius: 5px;
+            background-color: lightyellow;
+            box-shadow: 10px 10px 12px 1px rgba(140,140,140,.5);
+            border: 2px solid;
+         }
+         .mygrid {
+            max-width: 700px; 
+            margin: 0 auto;
+            display: grid;
+            grid-gap: 2px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+         }
+         .box {
+            padding: 15px 1px 10px 1px;
+            font-size: 20px;
+            font-weight: bold;
+         }
+         button {
+            margin: 0 auto;
+            text-align: center;
+            font-size: 25px;
+            font-weight: bold;
+            width: 160px;
+            height: 80px;
+            border-radius: 5px;
+            vertical-align: middle;
+            box-shadow: 5px 5px #999;
+         }
+         button:active {
+            box-shadow: 1px 1px #666;
+         }
 
-      .switch input {
-      display: none;
-      }
-   </style>
-</head>
-<body>
-   <div class="topnav" id="myTopnav">
-      <a href="#" class="disabled">LIMAX SLUG<br>TEST SYSTEM</a>
-      <div class="topnav-right">
-         <a href="/">SLUG<br>POSITIONING</a>
-         <a href="/setup">SITE<br>SETUP</a>
-         <a href="/basicsine">BASIC<br>SINE</a>
-         <a href="/sweep">SINE<br>SWEEP</a>
-         <a href="/plot4">SHOW<br>PLOTS</a>
-         <a href="/datafile">DATA<br>CONTROL</a>
-         <a href="/equipment">EQUIPMENT<br>SETUP</a>
-      </div>
-      <a href="javascript:void(0);" class="icon" onclick="handleNavBar()">
-         <i class="fa fa-bars"></i>
-      </a>
-   </div>
-<h1><br>LIMAX WINCH MANUAL CONTROL</h1>
-   <div class="mygrid">
-      <div class="buttontext">
-         <p>MOVE UP</p>
-      </div>
-      <div class="buttontext">
-         <p>STOP</p>
-      </div>
-      <div class="buttontext">
-         <p>MOVE DOWN</p>
-      </div>
-      <label class="switch">
-         <input type="checkbox", class="chkbox", onchange="toggleCheckbox(this)", id="1">
-         <span class="kbutton", id="1k"></span>
-      </label>
-      <label class="switch">
-         <input type="checkbox", class="chkbox", onchange="toggleCheckbox(this)", id="2">
-         <span class="kbutton", id="2k"></span>
-      </label>
-      <label class="switch">
-         <input type="checkbox", class="chkbox", onchange="toggleCheckbox(this)", id="3">
-         <span class="kbutton", id="3k"></span>
-      </label>
-   </div>
-   <div class="numeric">
-      <label><br>SPEED</label>
-      <input type="text", id="rpm", name="isnumber", min="1", max="200", onchange="dataChangeFunction(this)">
-      <label>(RPM)</label>
-   </div>
-   <div class="mytext">
-      <div>
-         <label>Kremford Pty Ltd</label>
-      </div>
-   </div>
+         .button-up {
+            background-color: green;
+            color: white;
+         }
+         .button-off {
+            background-color: red;
+            color: black;
+         }
+         .button-down {
+            background-color: green;
+            color: white;
+         }
+         .numeric {
+            max-width: 700px; 
+            margin: 0 auto;
+            text-align: center;
+            font-size: 25px;
+            font-weight: bold;
+         }
+         .company {
+            padding: 25px;
+            margin: 0 auto;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+         }
+         input[type=text], select {
+            padding: 25px 1px 20px 1px;
+            font-size: 30px;
+            font-weight: bold;
+            text-align: center;
+            width: 100px;
+            height: 10px;
+            border: 2px solid black;
+         }
+      </style>
+      <script>
+         const  MOTOR_LIFT_RPM   =    "rpm"
 
-</body>
+         // Buttons.
+         //
+         const STATE_UP_ID          =  "B_GO_UP"
+         const STATE_OFF_ID         =  "B_STOP"
+         const STATE_DOWN_ID        =  "B_GO_DOWN"
+
+         window.addEventListener('load', onLoad);
+         window.addEventListener('load', getValues);
+
+         //-------------------------------------------------------------------
+         //
+         function  onLoad(event) {
+            initWebSocket();
+            initButtons();
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function initWebSocket() {
+            console.log('Trying to open a WebSocket connection…');
+            websocket = new WebSocket(gateway);
+            websocket.onopen    = onOpen;
+            websocket.onclose   = onClose;
+            websocket.onmessage = onMessage;
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onOpen(event) {
+            console.log('Connection opened');
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onClose(event) {
+            console.log('Connection closed');
+            setTimeout(initWebSocket, 2000);
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onMessage(event) 
+         {
+            console.log("onMessage: event.data:");
+            console.log(event.data);
+            var obj = JSON.parse(event.data);  // save JSON data
+            console.log(obj);
+
+            if (obj.text != null)
+            {
+               if (obj.index == "1")
+               {
+                  document.getElementById(STATE_UP_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.onColor, obj.offColor, STATE_UP_ID);
+               }
+               else if (obj.index == "2")
+               {
+                  document.getElementById(STATE_OFF_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.onColor, obj.offColor, STATE_OFF_ID);
+               }
+               else if (obj.index = "3")
+               {
+                  document.getElementById(STATE_DOWN_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.onColor, obj.offColor, STATE_DOWN_ID);
+               }
+            }
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function buttonColor(state, onColor, offColor, identifier)
+         {
+            console.log(state, identifier, onColor, offColor);
+            
+            if (state)
+            {
+               document.getElementById(identifier).style.backgroundColor = onColor;
+            }
+            else
+            {
+               document.getElementById(identifier).style.backgroundColor = offColor;
+            }
+         }  
+
+         //-----------------------------------------------------------------------------
+         function initButtons() 
+         {
+            document.getElementById(STATE_UP_ID).addEventListener('click', toggleUP);
+            document.getElementById(STATE_OFF_ID).addEventListener('click', toggleOFF);
+            document.getElementById(STATE_DOWN_ID).addEventListener('click', toggleDOWN);
+         }
+                  
+         //-----------------------------------------------------------------------------
+         function toggleUP(event) {
+            let t = ["button", STATE_UP_ID, "1"];
+            console.log(t);
+            websocket.send(t);
+         }
+
+         //-----------------------------------------------------------------------------
+         function toggleOFF(event) {
+            let t = ["button", STATE_OFF_ID, "2"];
+            console.log(t);
+            websocket.send(t);
+         }
+
+         //-----------------------------------------------------------------------------
+         function toggleDOWN(event) {
+            let t = ["button", STATE_DOWN_ID, "3"];
+            console.log(t);
+            websocket.send(t);
+         }
+
+         //-----------------------------------------------------------------------------
+         // Create an event source to listen for events.
+         //
+         if (!!window.EventSource) 
+         {
+            var source = new EventSource('/events');
+
+            console.log("EventSource");
+            source.addEventListener('open', function(e) 
+            {
+               console.log("Events connected");
+            }, false);
+
+            source.addEventListener('error', function(e)
+            {
+               if (e.target.readyState != EventSource.OPEN)
+               {
+                  console.log("Events disconnected");
+               }
+            }, false);
+
+            source.addEventListener('new_value', function(e)
+            {
+               console.log("new_values");
+               var obj = JSON.parse(e.data);
+               document.getElementById(MOTOR_LIFT_RPM).value = obj.rpm;
+            }, false);
+         }
+
+         //-----------------------------------------------------------------------------
+         // Function to get current readings from the input fields in response to the
+         // webpage being loaded or refreshed.
+         //
+         function getValues() 
+         {
+            var xhr = new XMLHttpRequest();
+
+            console.log("getValues");
+            xhr.onreadystatechange = function () 
+            {
+               if (this.readyState == 4 && this.status == 200)
+               {
+                  // The obj names are defined in CSpiff::GetCurrentInputValues().
+                  //
+                  var obj = JSON.parse(this.responseText);
+                  console.log(obj);
+                  document.getElementById(MOTOR_LIFT_RPM).value = obj.accelpwr;
+               }
+         }; 
+         xhr.open("GET", "/values", true);
+         xhr.send();
+         }
+      </script>
+   </head>
+   
+   <body>
+      <div class="content">
+         <div class="topnav" id="myTopnav">
+            <a href="#" class="disabled">LIMAX SLUG<br>TEST SYSTEM</a>
+            <div class="topnav-right">
+               <a href="/">SLUG<br>POSITIONING</a>
+               <a href="/setup">SITE<br>SETUP</a>
+               <a href="/basicsine">BASIC<br>SINUSOIDAL</a>
+               <a href="/sweep">SWEEP<br>SINUSOIDAL</a>
+               <a href="/plot4">SHOW<br>PLOTS</a>
+               <a href="/datafile">DATA<br>CONTROL</a>
+               <a href="/equipment">EQUIPMENT<br>SETUP</a>
+            </div>
+            <a href="javascript:void(0);" class="icon" onclick="handleNavBar()">
+               <i class="fa fa-bars"></i>
+            </a>
+         </div>
+
+         <div class="myframe">
+            <div class="page_title">
+            <h1>LIMAX SLUG POSITIONING</h1>
+         </div>
+
+         <div class="mygrid">
+            <div class="box">
+               MOVE SLUG UP
+            </div>
+            <div class="box">
+               STOP SLUG
+            </div>
+            <div class="box">
+               MOVE SLUG DOWN
+            </div>
+         </div>
+         <div class="mygrid">
+            <button class="button-up" id="B_GO_UP"><span id="UP">%STATE_UP%</span></button>
+            <button class="button-off" id="B_STOP"><span id="OFF">%STATE_OFF%</span></button>
+            <button class="button-down" id="B_GO_DOWN"><span id="DOWN">%STATE_DOWN%</span></button>
+            </div>
+         <div class="numeric">
+               <label><br>SPEED</label>
+               <input type="text", id="rpm", name="isnumber", min="1", max="200", onchange="dataChangeFunction(this)">
+               <label>(RPM)</label>
+         </div>
+
+         <!-- Row 6 -->
+         <div class="company">
+            <div>
+               <label>Kremford Pty Ltd</label>
+            </div>
+         </div>
+         </div>
+      </div>
+   </body>
+   <script src="/newscript.js"></script>
 </html>

@@ -13,9 +13,9 @@ class CSensors
 public:
    CSensors(void);
 
-   String GetSensorPressUnits(uint8_t unitType);
+   String GetSensorPressUnits(uint8_t unitType) const;
 
-   String GetSensorTempUnits(uint8_t unitType);
+   String GetSensorTempUnits(uint8_t unitType) const;
 
 private:   
 };

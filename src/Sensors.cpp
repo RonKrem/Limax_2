@@ -12,7 +12,7 @@ CSensors::CSensors(void)
 //-------------------------------------------------------------------
 // Package the pressure sensor data ready for transfer to the web site.
 // 
-String CSensors::GetSensorPressUnits(uint8_t unitType)
+String CSensors::GetSensorPressUnits(uint8_t unitType) const
 {
    String unit;
 
@@ -61,7 +61,7 @@ String CSensors::GetSensorPressUnits(uint8_t unitType)
 //-------------------------------------------------------------------
 // Package the temperature sensor data ready for transfer to the web site.
 //
-String CSensors::GetSensorTempUnits(uint8_t unitType)
+String CSensors::GetSensorTempUnits(uint8_t unitType) const
 {
    String unit;
 

@@ -21,7 +21,17 @@ public:
 
    FileStateType FileExists(const char *path);
 
-   FileStateType WriteFile(const char *path, const char *message) ;
+   FileStateType WriteFile(const String path, const String message) ;
+
+   FileStateType AppendFile(const String path, const String message);
+
+   File OpenFile(String path);
+
+   String ReadFile(const String path);
+
+   String ReadFileUntil(File fd, char terminator);
+
+   FileStateType DeleteFile(const String path);
 
 private:   
 };

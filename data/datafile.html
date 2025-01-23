@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>LIMAX SLUG TESTER</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="icon" href="data:,">
+      <link rel="stylesheet" type="text/css" href="topnavstyle.css">
+   </head>
+      
+   <style>
+      html {
+         font-family: helvetica;
+         text-align: center;
+      }
+      .p {
+         font-size: 10px;
+      }
+      .content {
+         max-width: 700px; 
+         margin: 0 auto;
+      }
+      body {
+         margin: 0 auto;
+         background-color: lightgray;      
+      }
+      .page_title {
+         font-size: 14px;
+         color: darkblue;
+         border: 1px solid;
+      }
+      .myframe {
+         margin: 0 auto;
+         border-radius: 5px;
+         background-color: lightyellow;      
+         box-shadow: 10px 10px 12px 1px rgba(140,140,140,.5);
+         border: 2px solid;
+      }
+      .mygrid {
+         max-width: 700px; 
+         margin: 0 auto;
+         display: grid;
+         grid-gap: 2px;
+         grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+         border: 2px solid;
+      }
+      .text_box {
+         padding: 10px 10px 10px 10px;
+         background-color: rgb(206, 235, 188);
+         text-align: left;
+      }
+      .box {
+         padding: 1px 10px 20px 1px;
+         font-size: 15px;
+         font-weight: bold;
+      }
+      button {
+         background-color: #3e8e41;
+         margin: 0 auto;
+         color: white;
+         text-align: center;
+         font-size: 18px;
+         font-weight: bold;
+         width: 140px;
+         height: 50px;
+         border-radius: 5px;
+         vertical-align: middle;
+         box-shadow: 5px 5px #999;
+      }
+      button:active {
+         box-shadow: 1px 1px #666;
+      }
+      .button-use {
+         background-color: #3e8e41;
+         color: white;
+      }
+      .numeric {
+         margin: 0 auto;
+         text-align: center;
+         font-size: 25px;
+         font-weight: bold;
+      }
+      .company {
+         background-color: lightyellow;
+         padding: 25px;
+         margin: 0 auto;
+         text-align: center;
+         font-size: 12px;
+         font-weight: bold;
+      }
+      input[type=text], select {
+         background-color: lightblue;
+         padding: 10px 1px 10px 1px;
+         font-size: 25px;
+         font-weight: bold;
+         text-align: center;
+         width: 80px;
+         height: 10px;
+         border: 2px solid black;
+      }
+   </style>
+
+   <body>
+      <div class="content">
+         <div class="topnav" id="myTopnav">
+            <a href="#" class="disabled">LIMAX SLUG<br>TEST SYSTEM</a>
+            <div class="topnav-right">
+               <a href="/">SLUG<br>POSITIONING</a>
+               <a href="/setup">SITE<br>SETUP</a>
+               <a href="/basicsine">BASIC<br>SINUSOIDAL</a>
+               <a href="/sweep">SWEEP<br>SINUSOIDAL</a>
+               <a href="/plot4">SHOW<br>PLOTS</a>
+               <a href="/datafile">DATA<br>CONTROL</a>
+               <a href="/equipment">EQUIPMENT<br>SETUP</a>
+            </div>
+            <a href="javascript:void(0);" class="icon" onclick="handleNavBar()">
+               <i class="fa fa-bars"></i>
+            </a>
+         </div>
+
+         <div class="myframe">
+            <div class="page_title">
+               <h1>DATA FILE CONTROL</h1>
+            </div>
+
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>Use these buttons to monitor or view the data that was just collected or is currently being collected.<br></label>
+               </div>
+            </div>
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>Pressing this button will list the data file on your screen.<br><br></label>
+                  <a href="view-data"><button class="button button-data">VIEW DATA</button></a>
+               </div>
+            </div>
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>Pressing this button will download the entire file to the <i>downloads</i> folder in your computer.<br><br></label>
+                  <a href="download-data"><button class="button button-data">DOWNLOAD DATA</button></a>
+                  <label><br></label>
+               </div>
+            </div>
+         </div>
+            
+         <div class="company">
+            <div>
+               <label>Kremford Pty Ltd</label>
+            </div>
+         </div>
+      </div>
+   </body>
+</html>

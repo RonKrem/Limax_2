@@ -1,4 +1,4 @@
-// CDataInputs.h
+// CData.h
 //
 #include "Main.h"
 
@@ -8,16 +8,16 @@
 //
 // typedef struct
 // {
-//    const char  *InputParameter;  // matches the input name from html
+//    const char  *JsonValue;  // matches the input name from html
 //    String      HtmlValue;        // item value
 //    char        *PathName;        // SPIFFS name where stored
 //    boolean     Update;           // must update SPIFFS    
 // } DataEntry;
 typedef struct
 {
-   String      InputParameter;   // matches the input name from html
-   String      HtmlValue;        // item value
-   boolean     Update;           // must update SPIFFS    
+   String      JsonValue;     // matches the input name from html
+   String      HtmlValue;     // item value
+   boolean     Update;        // must update SPIFFS    
 } DataEntry;
 
 
@@ -34,12 +34,9 @@ enum  // index for numeric database
    DB_PERIOD3_DEGS,           // 8
 
    DB_SINE_RUNTIME_MINS,      // 9
-   DB_DEPTH_CMS,              // 10
+   DB_DEPTH_MS,               // 10
 
-   DB_TEST_DESCRIPTION,       // 11
-   DB_S1_DESCRIPTION,         // 12
-   DB_S2_DESCRIPTION,         // 13
-   DB_S3_DESCRIPTION,         // 14
+   // Missing numbers now in HDIndex
    
    DB_SAMPLE_INTERVAL,        // 15
 
@@ -52,16 +49,29 @@ enum  // index for numeric database
    
    DB_CONTROLLER_TEMP,        // 22
    DB_MOTOR_LIFT_RPM,         // 23
-   DB_TEST_ELASED_TIME,       // 24
+   DB_TEST_ELAPSED_TIME,      // 24
    DB_SWEEP_START,            // 25
    DB_SWEEP_STOP,             // 26
    DB_SWEEP_DEPTH,            // 27
    DB_SWEEP_PREAMBLE,         // 28
    DB_SWEEP_RUNTIME_MINS,     // 29
 
-   DB_DATAFILE_NAME,          // 30
 } DBIndex;
 
+enum
+{
+   HD_TEST_DESCRIPTION,       // 0
+   HD_S1_DESCRIPTION,         // 1
+   HD_S2_DESCRIPTION,         // 2
+   HD_S3_DESCRIPTION,         // 3
+   HD_DATAFILE_NAME,          // 4
+} HDIndex;
+
+enum DataType
+{
+   LIMAX_DATA,
+   LIMAX_HEADER,
+};
 
 //-------------------------------------------------------------------
 #define  SENSOR_1_PRESS       "press1"
@@ -85,26 +95,42 @@ enum  // index for numeric database
 
 
 
-class CDataInputs
+
+class CData
 {
 public:
-   CDataInputs(void);
+   CData(void);
 
    void RestoreSavedValues(void);
 
-   DataEntry GetEntry(uint32_t index) const;
+   DataEntry GetDataEntry(const uint32_t index);
 
-   void PutEntry(uint32_t index, String value);
+   String GetHeaderEntryString(uint32_t index);
 
-   void MatchAndUpdate(String &name, String &newValue);
+   float GetDataEntryNumericValue(uint32_t index);
 
-   String GetCurrentSpiffsValues(void);
+   String GetDataEntryStringValue(uint32_t index);
 
-   String CreateDirectoryName(uint32_t index);
+   void PutDataEntryValue(const uint32_t index, const String value);
+
+   void MatchAndUpdateData(String &name, String &newValue);
+   void MatchAndUpdateHeaders(String &name, String &newValue);
+
+   String GetCurrentEpromDataValues(void);
+
+   String GetCurrentEpromHeaderValues(void);
+
+   void UpdateDatabase(const AsyncWebParameter* p);
 
 private:  
 
-   boolean ActionParameter(int index);
+   void Restore(DataEntry* p);
+
+   void Update(DataEntry* p, const AsyncWebParameter* q);
+
+   boolean ActionDataParameter(int index);
+
+   String CreateFileName(DataEntry* p);
 
 private:
    String         mOldValue;

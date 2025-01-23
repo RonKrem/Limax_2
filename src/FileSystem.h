@@ -23,6 +23,7 @@ typedef enum
     FILE_DOES_NOT_EXIST,
     CARD_MOUNT_FAILED,
     NO_CARD_EXISTS,
+    FILE_OPEN_FAILED,
 } FileStateType;
 
 
@@ -37,9 +38,17 @@ public:
 
    FileStateType FileExists(fs::FS &fs, const char *path);
 
+   File OpenFile(fs::FS &fs, const char* path);
+
    String ReadFile(fs::FS &fs, const char* path);
 
+   String ReadFileUntil(File file, char terminator);
+
    FileStateType WriteFile(fs::FS &fs, const char* path, const char* message);
+
+   FileStateType AppendFile(fs::FS &fs, const char *path, const char *message);
+
+   FileStateType DeleteFile(fs::FS &fs, const char *path);
 
 private:
 };

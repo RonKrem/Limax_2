@@ -140,47 +140,47 @@ public:
 
    void Configure(void);
    
-   uint32_t GetDirection(void);           // get direction
-   uint32_t GetStoppedPwr(void);          // get stopped power
+   uint32_t GetDirection(void) const;           // get direction
+   uint32_t GetStoppedPwr(void) const;          // get stopped power
    uint32_t GetAccelPower(void) const;            // get accel power
-   uint32_t GetDecelPwr(void);            // get decel power
-   uint32_t GetRunPwr(void);              // get run power
-   uint32_t GetStepIndex(void);           // get step index
-   uint32_t GetAccelRate(void);           // get accel rate
-   uint32_t GetDecelRate(void);           // get decel rate
+   uint32_t GetDecelPwr(void) const;            // get decel power
+   uint32_t GetRunPwr(void) const;              // get run power
+   uint32_t GetStepIndex(void) const;           // get step index
+   uint32_t GetAccelRate(void) const;           // get accel rate
+   uint32_t GetDecelRate(void) const;           // get decel rate
 
-   void SetDirection(uint32_t value);     // set direction
-   void SetStoppedPwr(uint32_t value);    // set stopped power
-   void SetAccelPwr(uint32_t value);      // set accel power
-   void SetDecelPwr(uint32_t value);      // set decel power
-   void SetRunPwr(uint32_t value);        // set run power
-   void SetAccelRate(uint32_t value);     // set accel rate
-   void SetDecelRate(uint32_t value);     // set decel rate
+   void SetDirection(const uint32_t value);     // set direction
+   void SetStoppedPwr(const uint32_t value);    // set stopped power
+   void SetAccelPwr(const uint32_t value);      // set accel power
+   void SetDecelPwr(const uint32_t value);      // set decel power
+   void SetRunPwr(const uint32_t value);        // set run power
+   void SetAccelRate(const uint32_t value);     // set accel rate
+   void SetDecelRate(const uint32_t value);     // set decel rate
 
    void ResetMotor(void);                 // reset powerstep01
 
    // Returns the value of the given parameter.
-   uint32_t GetParam(uint16_t theRegister);
+   uint32_t GetParam(const uint16_t theRegister);
 
    // Sets the given parameter to the given value. Uses the semaphore
    // to handle the controller done.
-   void SetParam(MOTOR_REGISTER_SET theRegister, uint32_t value);
+   void SetParam(const MOTOR_REGISTER_SET theRegister, const uint32_t value);
 
    // Return the corresponding steps/rev for the current index.
-   uint32_t GetStepsPerRev(uint32_t index);
+   uint32_t GetStepsPerRev(const uint32_t index);
 
    // Check the input step setting is allowed.
-   int16_t CheckStepBoundaries(int16_t value);
+   int16_t CheckStepBoundaries(const int16_t value);
 
-   void RunMotorAtRevsPerSec(float rps);
+   void RunMotorAtRevsPerSec(const float rps);
 
    // The sign specifies the direction.
-   void RunAtTickRate(float TicksPerSec);
+   void RunAtTickRate(const float TicksPerSec);
 
    // Set the SPS rate the motor will run at.
-   void SetMaxSpeed(uint32_t maxSpeed);
+   void SetMaxSpeed(const uint32_t maxSpeed);
 
-   float GetWinchSpeed(void);
+   float GetWinchSpeed(void) const;
 
    // Set the SPS rate the motor will run at.
    void SetMinSpeed(uint32_t minSpeed);
@@ -192,13 +192,13 @@ public:
    uint32_t GetMotorStatus(void);
 
    // set the chip speed.
-   void SetWinchSpeedRPM(int32_t rpm);
+   void SetWinchSpeedRPM(const int32_t rpm);
 
    // run at the given SPS speed.
-   void RunAtSPS(uint32_t stepsPerSec);
+   void RunAtSPS(const uint32_t stepsPerSec);
 
    // Set the step mode.
-   void SetStepMode(int16_t mode);
+   void SetStepMode(const int16_t mode);
 
    // return RPM in RPS.
    float RPMtoRPS(int32_t rpm);
@@ -207,7 +207,7 @@ public:
    uint32_t RPMtoSPS(uint16_t rpm);
 
    // return RPS to SPS
-   uint32_t RPStoSPS(uint32_t rps);
+   uint32_t RPStoSPS(uint32_t rps) const;
 
    uint32_t GetSpiClk(void) const;
 
@@ -222,7 +222,7 @@ private:
    void ConfigureDefaultPowerstep(void);
 
    // Start running in the given direction at the given speed.
-   void Run(uint32_t speed);
+   void Run(const uint32_t speed);
 
    // Reset the device to the power up state.
    void ResetDevice(void);
@@ -237,45 +237,45 @@ private:
    // SPEED format. Use only this to set the motor speed.
    uint32_t StepsPerSecondToChipSpeed(uint32_t stepsPerSecond);
 
-   uint32_t StepsPerSecondToMaxSpeed(uint32_t stepsPerSecond);
+   uint32_t StepsPerSecondToMaxSpeed(const uint32_t stepsPerSecond);
 
-   uint32_t StepsPerSecondToMinSpeed(uint32_t stepsPerSecond);
+   uint32_t StepsPerSecondToMinSpeed(const uint32_t stepsPerSecond);
 
    // Use to set the TON_MIN and TOFF_MIN times.
-   uint32_t OnOffTimes(float microSecs);
+   uint32_t OnOffTimes(const float microSecs);
 
    // Use to set the TOFF_FAST and FAST_STEP times.
-   uint32_t FastStepTimes(float tOffFastuSecs, float fastStepuSecs);
+   uint32_t FastStepTimes(const float tOffFastuSecs, const float fastStepuSecs);
 
    // Use to set the TBLANK and TDT times.
-   uint32_t BridgeTimes(uint32_t blankTime, uint32_t deadTime);
+   uint32_t BridgeTimes(const uint32_t blankTime, const uint32_t deadTime);
 
    // Use to set TVAL registers HOLD, RUN, ACC and DEC as mV.
-   uint32_t SetTorqueByPercent(uint32_t percent);
+   uint32_t SetTorqueByPercent(const uint32_t percent);
 
    // Use to set TVAL registers HOLD, RUN, ACC and DEC.
    // Bounds input range to 0-100. Maps 0-100 to 0-127.
-   uint32_t Set_TVAL_X_Value(uint32_t value);
+   uint32_t Set_TVAL_X_Value(const uint32_t value);
 
    // Returns the bounded OCD_TH value.
-   uint32_t Set_VDS_Voltage(uint32_t v_OCD_TH);
+   uint32_t Set_VDS_Voltage(const uint32_t v_OCD_TH);
 
    // SPI interface.
 private:
-   void ClearSpiMessage(SpiCommandPtr ptr);
+   void ClearSpiMessage(const SpiCommandPtr ptr);
 
    // Send the command via a busy/wait SPI message.
-   void SendSpiCommand(SpiCommandPtr commPtr);
+   void SendSpiCommand(const SpiCommandPtr commPtr);
 
-   void ClearResultBuffer(uint32_t index);
+   void ClearResultBuffer(const uint32_t index);
 
-   void SetupResultBuffer(uint32_t index);
+   void SetupResultBuffer(const uint32_t index);
 
-   uint32_t GetReply(uint32_t bytes);
+   uint32_t GetReply(const uint32_t bytes);
 
-   uint32_t SendSpiByte(uint8_t* ptr);
+   uint32_t SendSpiByte(const uint8_t* ptr);
 
-   int32_t FloatToInt32(float value);
+   int32_t FloatToInt32(float value) const;
 
 
 //-----------------------------------------------------------------------------
@@ -302,21 +302,21 @@ private:
 
 //-----------------------------------------------------------------------------
 //
-inline uint32_t CMotor::GetStepIndex(void) 
+inline uint32_t CMotor::GetStepIndex(void) const
 {
    return (uint32_t)mStepIndex;
 }
 
 //-----------------------------------------------------------------------------
 //
-inline uint32_t CMotor::GetAccelRate(void) 
+inline uint32_t CMotor::GetAccelRate(void) const
 {
    return (uint32_t)mAccelRate;
 }
 
 //-----------------------------------------------------------------------------
 //
-inline uint32_t CMotor::GetDecelRate(void) 
+inline uint32_t CMotor::GetDecelRate(void) const
 {
    return (uint32_t)mDecelRate;
 }

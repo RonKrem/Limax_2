@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+   <title>LIMAX SLUG TESTER</title>
+   <meta name="viewport" content="width=device-width, initial-scale=1">
+   <link rel="icon" href="data:,">
+   <link rel="stylesheet" type="text/css" href="topnavstyle.css">
+   <style>
+      html {
+         font-family: helvetica;
+         text-align: center;
+      }
+      .p {
+         font-size: 10px;
+      }
+      body {
+         margin: 0 auto;
+         background-color: lightyellow;      
+      }
+      .page_title {
+         font-size: 18px;
+         color: darkblue;
+         border: 1px solid;
+      }
+      .myframe {
+         margin: 0 auto;
+         border-radius: 5px;
+         background-color: lightyellow;      
+         box-shadow: 10px 10px 12px 1px rgba(140,140,140,.5);
+         border: 2px solid;
+      }
+      .mygrid {
+         margin: 0 auto;
+         display: grid;
+         grid-gap: 2px;
+         grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+         border: 2px solid;
+      }
+      .text_box {
+         padding: 10px 10px 10px 10px;
+         background-color: rgb(206, 235, 188);
+         text-align: left;
+      }
+      .box {
+         padding: 1px 10px 20px 1px;
+         font-size: 15px;
+         font-weight: bold;
+      }
+      button {
+         margin: 0 auto;
+         text-align: center;
+         font-size: 18px;
+         font-weight: bold;
+         width: 120px;
+         height: 40px;
+         border-radius: 5px;
+         vertical-align: middle;
+         box-shadow: 5px 5px #999;
+      }
+      button:active {
+         box-shadow: 1px 1px #666;
+      }
+      .button-use {
+         background-color: #3e8e41;
+         color: white;
+      }
+      .numeric {
+         margin: 0 auto;
+         text-align: center;
+         font-size: 25px;
+         font-weight: bold;
+      }
+      .company {
+         background-color: lightyellow;
+         padding: 25px;
+         margin: 0 auto;
+         text-align: center;
+         font-size: 12px;
+         font-weight: bold;
+      }
+      input[type=text], select {
+         background-color: lightblue;
+         padding: 10px 1px 10px 1px;
+         font-size: 25px;
+         font-weight: bold;
+         text-align: center;
+         width: 80px;
+         height: 10px;
+         border: 2px solid black;
+      }
+   </style>
+</head>
+<body>
+   <div class="topnav" id="myTopnav">
+      <a href="#" class="disabled">LIMAX SLUG<br>TEST SYSTEM</a>
+      <div class="topnav-right">
+         <a href="/">SLUG<br>POSITIONING</a>
+         <a href="/setup">SITE<br>SETUP</a>
+         <a href="/basicsine">BASIC<br>SINUSOIDAL</a>
+         <a href="/sweep">SWEEP<br>SINUSOIDAL</a>
+         <a href="/plot4">SHOW<br>PLOTS</a>
+         <a href="/datafile">DATA<br>CONTROL</a>
+         <a href="/equipment">EQUIPMENT<br>SETUP</a>
+      </div>
+      <a href="javascript:void(0);" class="icon" onclick="handleNavBar()">
+         <i class="fa fa-bars"></i>
+      </a>
+   </div>
+   <div class="page_title">
+      <h1>POSITION AND SENSOR READINGS</h1>
+   </div>
+      
+   <!-- Row 1 -->
+   <div class="mygrid">
+      <div class="box">
+         <canvas id="myChart0"></canvas>
+      </div>
+      <div class="box">
+         <canvas id="myChart2"></canvas>
+      </div>
+   </div>
+
+   <!-- Row 2 -->
+   <div class="mygrid">
+      <div class="box">
+         <canvas id="myChart1"></canvas>
+      </div>
+      <div class="box">
+         <canvas id="myChart3"></canvas>
+      </div>
+   </div>
+
+   <!-- Row 3 -->
+   <div class="mygrid">
+      <div class="box">
+         <label><br>RUNTIME (MINS)<br></label>
+         <span id="etime"></span><br>
+      </div>
+      <div class="box">
+         <label><br>WELL SENSOR<br></label>
+         <span id="press1"></span><span id="p1unit"></span><br>
+      </div>
+      <div class="box">
+         <label><br>OBSERVATION WELL 1<br></label>
+         <span id="press2"></span><span id="p2unit"></span><br>
+      </div>
+      <div class="box">
+         <label><br>OBSERVATION WELL 2<br></label>
+         <span id="press3"></span><span id="p3unit"></span><br>
+      </div>
+   </div>
+
+   <!-- Row 7 -->
+   <div class="company">
+      <div>
+         <label>Kremford Pty Ltd</label>
+      </div>
+   </div>
+</body>
+
+<script type="text/javascript" src="chart.umd.min.js"></script>
+<script type="text/javascript" src="plot4.js"></script>
+
+</html>

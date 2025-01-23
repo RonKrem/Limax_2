@@ -4,6 +4,7 @@
 #define  _MAIN_H
 
 #include <Arduino.h>
+#include <ElegantOTA.h>
 #include <SPI.h>
 #include <WiFi.h>
 #include <AsyncTCP.h>
@@ -18,22 +19,44 @@
 #include "Ledscreen.h"
 
 
-#define  BRAKE_PORT              21
-#define  DATA_FOLDER             "/LimaxData"
+#define  LIMAX_CONTROLLER
+//#define  LED_SCREEN
+//#define  SIMULATING
+
+
+
+#define  BRAKE_PORT              27
+#define  LED_PORT                25
+
+#define  DATA_FOLDER             "/LimaxData"         // user CSV file
+#define  DISPLAY_DATA_FOLDER     "/DisplayData"       // temporary data folder
+#define  TEMP_DATA_FILENAME      "/DisplayData/temp"  // the internal dynamic data file
+#define  DISPLAY_SAMPLES         40
+
 #define  MAX_PATHNAME_LENGTH     40    // used in SetupDatabase
+
+#define  SDCARD_ACCESS_MUTEX     1500   // mSec
 
 // Configuration for Sparkfun ESP32 Datalogger IOT
 // The theSPI connections are:
 //   SDcard SDO (Serial Data Out) to ESP32 CIPO (Controller In Peripheral Out)
 //   SDcard SDI (Serial Data In)  to ESP32 COPI (Controller Out Peripheral In)
 //
-#define  STEPPER_SCK          18    // Stepper spi clock
-#define  STEPPER_COPI         23    // Stepper MOSI (Master Out Slave In) to ESP32 PICO (Peripheral In Controller Out)
-#define  STEPPER_CIPO         19    // Stepper MISO from ESP32 POCI
-#define  STEPPER_CS            5    // Stepper select (low)
-#define  STEPPER_RESET        33    // Stepper reset
+#define  STEPPER_SCK             18    // Stepper spi clock
+#define  STEPPER_COPI            23    // Stepper MOSI (Master Out Slave In) to ESP32 PICO (Peripheral In Controller Out)
+#define  STEPPER_CIPO            19    // Stepper MISO from ESP32 POCI
+#define  STEPPER_CS              5     // Stepper select (low)
+#define  STEPPER_RESET           33    // Stepper reset
 
 #define  BACKGROUND_SAMPLE_TIME  10000
+
+#define  SAMPLE_QUEUE_SIZE       7
+
+#define  LO_PRIORITY             2
+#define  MD_PRIORITY             3
+#define  HI_PRIORITY             4
+
+//#define  SPIFFS                  LittleFS
 
 
 //-----------------------------------------------------------------------------
@@ -54,6 +77,8 @@ typedef struct
    uint32_t DoQuickLookStep      : 1;
    uint32_t Tick200msecs         : 1;
    uint32_t OledExists           : 1;
+   uint32_t BlinkLed             : 1;
+   uint32_t RePlot               : 1;  
 } Flags;
 
 
@@ -69,6 +94,13 @@ typedef enum
    DO_STEP,
    DO_QUICKLOOK,
 } StepTimerType;
+
+enum
+{
+   SENSOR_1,
+   SENSOR_2,
+   SENSOR_3,
+};
 
 
 #endif   // _MAIN_H

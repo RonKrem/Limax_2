@@ -10,6 +10,8 @@ public:
 
    void Init(void);
 
+   static void Task_ProcessStepTimer(void* parameter);
+
    void ManageSineTest(void);
 
    void ManageSweepTest(void);
@@ -51,6 +53,8 @@ public:
 
    String SecondsToTime(uint32_t seconds);
 
+   float NewSum(uint32_t index, boolean sine2, boolean sine3);
+
 private:  
 
    void ComputeDepth(uint32_t seconds);
@@ -58,8 +62,6 @@ private:
    void SweepState(uint32_t seconds);
 
    void PutSlugDepth(float position);
-
-   float NewSum(uint32_t index, boolean sine2, boolean sine3);
 
    
 private:

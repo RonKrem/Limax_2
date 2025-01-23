@@ -1,19 +1,17 @@
 // Eprom.cpp
 //
 #include "Eprom.h"
-#include "DataInputs.h"
+#include "Data.h"
 
-#define  SPIFFS               LITTLEFS
 
 extern CFileSystem FileSystem;
-extern CDataInputs DataInputs;
+extern CData Data;
 
 
 //-------------------------------------------------------------------
 //
 CEprom::CEprom(void)
 {
-
 }
 
 //-----------------------------------------------------------------------------
@@ -74,14 +72,23 @@ void CEprom::ListDir(const char *dirname, uint8_t levels)
 
 //-------------------------------------------------------------------
 //
-FileStateType CEprom::WriteFile(String path, String message) 
+FileStateType CEprom::WriteFile(const String path, const String message) 
 {
+   //Serial.println(message);
    return FileSystem.WriteFile(LittleFS, path.c_str(), message.c_str());
 }
 
 //-------------------------------------------------------------------
 //
-String CEprom::ReadFile(String path) 
+String CEprom::ReadFile(const String path) 
 {
+//   Serial.printf("Reading EEProm file %s\n", path.c_str());
    return FileSystem.ReadFile(LittleFS, path.c_str());
+}
+
+//-------------------------------------------------------------------
+//
+FileStateType CEprom::DeleteFile(const String path)
+{
+   return FileSystem.DeleteFile(LittleFS, path.c_str());
 }

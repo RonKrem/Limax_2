@@ -1,50 +1,86 @@
 // Buttons.cpp
 //
 #include "Buttons.h"
-#include "DataInputs.h"
+#include "Data.h"
 #include "SDCard.h"
 #include "Eprom.h"
+#include "Timers.h"
+#include "Motor.h"
+#include "MotorControl.h"
+#include "ManageSamples.h"
+#include "WellSimulator.h"
+#include "Network.h"
 
-//#include "Motor.h"
-//#include "MotorControl.h"
-
+//#define  PRINT_BUTTONS
+#ifdef PRINT_BUTTONS
+#define  P_BUT(x)   x;
+#else
+#define  P_BUT(x)   // x
+#endif
 
 extern CSDCard SDCard; 
 extern CEprom Eprom;
-//extern CMotor Motor;
-//extern CMotorControl MotorControl;
+extern CMotor Motor;
+extern CMotorControl MotorControl;
+extern CTimers Timers;
+//extern CControls Controls;
+extern CData Data;
+extern CButtons Buttons;
+extern CManageSamples ManageSamples;
+extern CNetwork Network;
+
+#ifdef SIMULATING
+extern CWellSimulator WellSimulator;
+#endif
+extern void NotifyClients(String state);
+
+extern DynamicData Temp;
 
 // Entries are:
 //   id        html id
-//   checked   checked or not (a String)
+//   checked   checked or not (a boolean)
 //   onText    text shown to turn it ON
 //   offText   text shown to turn it OFF
+//   on color
+//   off color
 //   State state is saved if "T"
 //   isGPIO    "T" if ID is a GPIO port
 //
 ButtonDetails Button[] = 
 {
-   {  "0", "0", "INVALID",    "INVALID",     0},    // zero entry unused
-   {  "1", "0", "UP",         "RUNNING",     0},    //  1 motor up
-   {  "2", "0", "STOP",       "STOP",        0},    //  2 motor down 
-   {  "3", "0", "DOWN",       "RUNNING",     0},    //  3 motor off
-   {  "4", "0", "CW",         "CCW",         STATE_IS_SAVED},    //  4 motor direction
-   {  "5", "0", "OFF",        "ON",          STATE_IS_SAVED},    //  5 brake overide
-   {  "6", "0", "OFF",        "ON",          STATE_IS_SAVED},    //  6 dynamic depth
-   {  "7", "0", "VIEW",       "ON",          0},    //  7 view data
-   {  "8", "0", "DOWNLOAD",   "ON",          0},    //  8 download data 
-   {  "9", "0", "DELETE",     "ON",          0},    //  9 delete data
-   { "10", "0", "EXCLUDED",   "INCLUDED",    0},    // 10 sine 2 enable
-   { "11", "0", "EXCLUDED",   "INCLUDED",    0},    // 11 sine 3 enable
-   { "12", "0", "START",      "STOP",        0},    // 12 start the test
-   { "13", "0", "START",      "STOP",        0},    // 13 start the quicklook
-   { "14", "0", "START",      "STOP",        0},    // 14 start/stop the sweep
-   { "15", "0", "START",      "STOP",        0},    // 15 sweep quicklook
-   { "16", "0", "LINEAR",   "EXPNTL",        STATE_IS_SAVED},    // 16 linear/exponential
-   { "17", "0", "PLOTS",          "",        0},    // 17 show the 4 place plot
+   {  "0", false, "INVALID",        "INVALID",     "ON",      "OFF",     0},    // zero entry unused
+   {  "1", false, "MOVING UP",      "UP",          "#3e8e41", "#ee4040", IS_PUSHON_PUSHOFF},     //  1 motor up
+   {  "2", false, "STOP",           "OFF",         "#3e8e41", "#ee4040", IS_PUSHON_PUSHOFF},     //  2 motor off 
+   {  "3", false, "MOVING DOWN",    "DOWN",        "#3e8e41", "#ee4040", IS_PUSHON_PUSHOFF},     //  3 motor down
+   {  "4", false, "CW",             "CCW",         "#3e658e", "#30cc3d", IS_PUSHON_PUSHOFF | STATE_IS_SAVED},        //  4 motor direction
+   {  "5", false, "ON",             "OFF",         "#ee4040", "#3e8e41", IS_PUSHON_PUSHOFF},        //  5 brake overide
+   {  "6", false, "OFF",            "ON",          "#ee4040", "#3e8e41", IS_PUSHON_PUSHOFF},        //  6 dynamic depth
+   {  "7", false, "VIEW",           "ON",          "#3e8e41", "#ee4040", 0},                     //  7 view data
+   {  "8", false, "DOWNLOAD",       "ON",          "#3e8e41", "#ee4040", 0},                     //  8 download data 
+   {  "9", false, "DELETE",         "ON",          "#3e8e41", "#ee4040", 0},                     //  9 delete data
+   { "10", false, "INCLUDED",       "EXCLUDED",    "#ee4040", "#3e8e41",  IS_PUSHON_PUSHOFF},     // 10 sine 2 enable
+   { "11", false, "INCLUDED",       "EXCLUDED",    "#ee4040", "#3e8e41",  IS_PUSHON_PUSHOFF},     // 11 sine 3 enable
+   { "12", false, "STOP",           "START",       "#ee4040", "#3e8e41",  IS_PUSHON_PUSHOFF},     // 12 start/stop the test
+   { "13", false, "START",          "STOP",        "#3e8e41", "#ee4040", IS_PUSHON_PUSHOFF},     // 13 start the quicklook
+   { "14", false, "START",          "STOP",        "#ee4040", "#3e8e41", IS_PUSHON_PUSHOFF},     // 14 start/stop the sweep
+   { "15", false, "START",          "STOP",        "#3e8e41", "#ee4040", 0},                     // 15 sweep quicklook
+   { "16", false, "LINEAR",         "EXPNTL",      "#3e658e", "#30cc3d", IS_PUSHON_PUSHOFF | STATE_IS_SAVED},        // 16 linear/exponential
+   { "17", false, "PLOTS",          "",            "#3e8e41", "#ee4040", 0},                     // 17 show the 4 place plot
 };
 int NumButtons = sizeof(Button) / sizeof(ButtonDetails);
 
+PushOnPushOff PPButtons[]
+{
+   { 10, "B_SINE2_ENABLE"},
+   { 11, "B_SINE3_ENABLE"},
+   { 12, "B_TEST_CONTROL"},
+   { 14, "B_SWEEP_CONTROL"},
+   { 16, "B_LIN_EXP"},
+   {  4, "B_DIRECTION"},
+   {  5, "B_BRAKE_OVERIDE"},
+   {  6, "B_DYNAMIC_DEPTH"},
+};
+int NumPPButtons = sizeof(PPButtons) / sizeof(PushOnPushOff);
 
 //-------------------------------------------------------------------
 //
@@ -52,15 +88,121 @@ CButtons::CButtons(void)
 {
 }
 
+//-------------------------------------------------------------------
+// Replaces button placeholders with default "state" value.
+//
+String CButtons::HomeProcessor(const String& var) 
+{
+   P_BUT(Serial.printf("HomeProcessor: "));
+   P_BUT(Serial.println(var));
+   if (var == "STATE_UP")     // 1
+   {
+      return Buttons.GetState(B_GO_UP);
+   }
+   if (var == "STATE_OFF")    // 2
+   {
+      return Buttons.GetState(B_STOP);
+   }
+   if (var == "STATE_DOWN")   // 3
+   {
+      return Buttons.GetState(B_GO_DOWN);
+   }
+   return String();
+}
+
+//-------------------------------------------------------------------
+// Replaces button placeholders with default "state" value.
+//
+String CButtons::BasicSineProcessor(const String& var) 
+{
+   JSONVar values;
+
+   P_BUT(Serial.printf("BasicSineProcessor: "));
+   P_BUT(Serial.println(var));
+   if (var == "STATE_EX2")    // 10
+   {
+      return Buttons.GetState(B_SINE2_ENABLE);
+   }
+   if (var == "STATE_EX3")    // 11
+   {
+      return Buttons.GetState(B_SINE3_ENABLE);
+   }
+   if (var == "STATE_CNTRL")  // 12
+   {
+      return Buttons.GetState(B_TEST_CONTROL);
+   }
+   return String();
+}
+
+//-----------------------------------------------------------------------------
+//
+String CButtons::SineSweepProcessor(const String& var)
+{
+   P_BUT(Serial.printf("SineSweepProcessor: "));
+   P_BUT(Serial.println(var));
+   if (var == "STATE_SW_ON")    // 14
+   {
+      return Buttons.GetState(B_SWEEP_CONTROL);
+   }
+   if (var == "STATE_LIN_EXP")    // 16
+   {
+      return Buttons.GetState(B_LIN_EXP);
+   }
+   return String();
+}
+
+//-------------------------------------------------------------------
+// Replaces button placeholders with default "state" value.
+//
+String CButtons::EquipmentProcessor(const String& var) 
+{
+   P_BUT(Serial.printf("EquipmentProcessor: "));
+   P_BUT(Serial.println(var));
+   if (var == "BRAKE_OVERIDE_ID")    // 5
+   {
+      return Buttons.GetState(B_BRAKE_OVERIDE);
+   }
+   if (var == "DYNAMIC_DEPTH_ID")    // 6
+   {
+      return Buttons.GetState(B_DYNAMIC_DEPTH);
+   }
+   if (var == "DIRECTION_ID")       // 4
+   {
+      return Buttons.GetState(B_DIRECTION);
+   }
+   return String();
+}
+
+//-----------------------------------------------------------------------------
+//
+void CButtons::SetBooleanState(const uint32_t index, boolean state)
+{
+   Button[index].checked = state;
+}
+
+//-----------------------------------------------------------------------------
+//
+String CButtons::GetState(uint32_t index)
+{
+   if (Button[index].checked)
+   {
+      return Button[index].onText;
+   }
+   else
+   {
+      return Button[index].offText;
+   }
+}
+
 //-----------------------------------------------------------------------------
 //
 void CButtons::RestoreSavedStates(void)
 {
-   // Create filenames for those buttons that actually save their state.
+   // Create filenames in EEprom for those buttons that actually save their state.
    //
    for (int i=0; i < NumButtons; i++)
    {
-//      Serial.printf("%d  ", i);
+      P_BUT(Serial.printf("%d  ", i));
 
       // Only a few buttons have their states saved
       if (Button[i].states & STATE_IS_SAVED)
@@ -68,21 +210,36 @@ void CButtons::RestoreSavedStates(void)
          String directory;
          String entry;
 
-         directory = CreateDirectoryName(i);          // assemble directory name
+         directory = CreateFileName(i);  // assemble directory name
          entry = Eprom.ReadFile(directory);   // read value
 
-         // If the name dooes not exists we create a match here.
+         // If the name does not exists we create a match here.
          //
          if (entry == "NULL")
          {
-//            Serial.println(entry);
-            Eprom.WriteFile(directory.c_str(), Button[i].checked.c_str());
-         }
+            String state;
 
-         Button[i].checked = entry;
+            P_BUT(Serial.printf("Creating: %s ", directory.c_str()));
+            state = GetButtonStateAsString(i);
+            Eprom.WriteFile(directory, state);
+         }
+         else if (entry == "1")
+         {
+            Button[i].checked = true;
+         }
+         else
+         {
+            Button[i].checked = false;
+         }
+      }
+      else
+      {
+         // Otherwise all non-saved buttons are off.
+         //
+         Button[i].checked = false;
       }
 
-//      Serial.println(Button[i].checked.c_str());
+      P_BUT(Serial.println(Button[i].checked));
    }
 }
 
@@ -92,16 +249,23 @@ void CButtons::RestoreSavedStates(void)
 String CButtons::GetButtonStates(void)
 {
    JSONVar myArray;
+   String state;
 
-  Serial.printf(" Control:GetButtonStates (%d)\n", NumButtons);
+   P_BUT(Serial.printf(" Buttons.GetButtonStates (%d)\n", NumButtons));
 
    for (int i=0; i<NumButtons - 1; i++)
    {
+      // Note the i+1 giving a 1 based access.
+      //
+      state = GetButtonStateAsString(i+1);
+
       myArray["button"][i]["id"] = Button[i+1].id;
-      myArray["button"][i]["checked"] = Button[i+1].checked;
+      myArray["button"][i]["checked"] = state;
       myArray["button"][i]["onText"] = Button[i+1].onText;
       myArray["button"][i]["offText"] = Button[i+1].offText;
-      Serial.printf("Button %d checked %s\n", i+1, Button[i+1].checked.c_str());
+      myArray["button"][i]["onColor"] = Button[i+1].onColor;
+      myArray["button"][i]["offColor"] = Button[i+1].offColor;
+      P_BUT(Serial.printf("Button %d checked %d\n", i+1, Button[i+1].checked));
    }
 
    String jsonString = JSON.stringify(myArray);
@@ -110,57 +274,81 @@ String CButtons::GetButtonStates(void)
 
 //-----------------------------------------------------------------------------
 //
-void CButtons::ProcessButtons(String id, String checked)
+void CButtons::ProcessCheckbox(const String identifier, const String index)
 {
    int i;
 
-   Serial.printf(" Control:ProcessButtons id=%d\n", id.toInt());
+   P_BUT(Serial.printf(" Buttons.ProcessCheckbox id=%d\n", index.toInt()));
 
    // First locate the matching Button[] entry so we can check
    // if its state should be saved in SPIFFS.
    //
-   for (i=1; i<NumButtons; i++)
+   for (i=0; i<NumButtons; i++)
    {
       // Find the matching button.
       //
-      if (id == Button[i].id)
+      if (index == Button[i].id)
       {
          String state;
 
-         Serial.printf(" Match at Button database index: %d, checked %s\n", i, checked.c_str());
+         P_BUT(Serial.printf(" Match at Button database index: %d, checked %s\n", i, identifier.c_str()));
+       }
+   }
+}
 
-         // Convert the "true"/"false" from javascript to the 
-         // "T"/"F" required in SPIFFS.
+//-----------------------------------------------------------------------------
+//
+void CButtons::ProcessButton(const String identifier, const String index)
+{
+   int i;
+
+   P_BUT(Serial.printf(" Buttons.ProcessButton identifier: <%s>  id=%d\n", identifier.c_str(), index.toInt()));
+
+   // First locate the matching Button[] entry.
+   //
+   for (i=0; i<NumButtons; i++)
+   {
+      // Find the matching button.
+      //
+      if (index == Button[i].id)
+      {
+         // This button has been clicked. 
          //
-         state = "0";
-         if (checked == "true") 
+         if (Button[i].states & IS_PUSHON_PUSHOFF)
          {
-            state = "1";
-         }
-
-         if (Button[i].states & IS_GPIO_PORT)
-         {
-            // This is a real gpio port, so set its output according
-            // to the javascript "checked" state.
+            // Because it is a push on/push off button, its new state will be
+            // the opposite of what it is now.
             //
-            // HOWEVER, THERE ARE NO DIRECT IO POINTS IN THE LIMAX THE USER CAN CHANGE.
+            if (GetBooleanState(i))
+            {
+               // Current state is pressed, so
+               Button[i].checked = false;
+            }
+            else
+            {
+               Button[i].checked = true;
+            }
          }
+         ActionButton(i, identifier);           // action the button
+         HandleWebButton(index, identifier);    // fix up the display
 
-         // Some buttons can have their pressed state saved
-         // over a power down.
+         // Some buttons can have their state saved over a power down.
          //
          if (Button[i].states & STATE_IS_SAVED)
          {
-            Serial.printf(" Recording button: %s state\n", id);
-//            SDCard.WriteFile(Button[i].state.c_str());
-            Button[i].checked = state;
-         }
+            String state;
+            String name;
 
-         ActionButton(i, checked, state);
+            name = CreateFileName(i);
+            Eprom.DeleteFile(name);
+            state = GetButtonStateAsString(i);
+            P_BUT(Serial.printf(" Recordin button %d state %s\n", i, state.c_str()));
+            Eprom.WriteFile(name, state);
+            state = Eprom.ReadFile(name);
+            P_BUT(Serial.printf("<%s> was written\n", state.c_str()));
+         }
       }
    }
-
-//   NotifyClients(GetButtonStates());
 }
 
 //----------------------------------------------------------------------------------------------
@@ -168,9 +356,10 @@ void CButtons::ProcessButtons(String id, String checked)
 // <checked> is either "true" or "false".
 // <state> is either "1" or "0"
 //
-void CButtons::ActionButton(uint16_t index, String checked, String state)
+void CButtons::ActionButton(const uint16_t index, const String identifier)
 {
-   Serial.printf(" Control:ActionButton index %d  state %s  checked %s\n", index, state.c_str(), checked.c_str());
+
+   P_BUT(Serial.printf(" Buttons.ActionButton index <%d>  name <%s>\n", index, identifier.c_str()));
    if (index < NumButtons)
    {
       // Note the parameter index jSonValues are 1 based, whereas the
@@ -179,55 +368,65 @@ void CButtons::ActionButton(uint16_t index, String checked, String state)
       //
       switch (index)
       {
-         case BUTTON_GO_UP:    // button 1 - UP/OFF
-            Serial.println("UP/OFF Button");
-            ManageMotorUp(index, state);
+         case B_GO_UP:    // button 1 - UP/OFF
+            P_BUT(Serial.println("UP/RUNNING Button"));
+            ManageMotorState(index);
             break;
 
-         case BUTTON_GO_DOWN:    // button 2 - DOWN/OFF
-            Serial.println("DOWN/OFF Button");
-            ManageMotorDown(index, state);
+         case B_STOP:    // button 2 - STOP
+            P_BUT(Serial.println("OFF/STOP Button"));
+            ManageMotorState(index);
             break;
 
-         case BUTTON_DIRECTION:     // button 3 - CW/CCW
-            Serial.println("DIRECTION Button");
+         case B_GO_DOWN:     // button 3 - DOWN/OFF
+            P_BUT(Serial.println("DOWN/RUNNING Button"));
+            ManageMotorState(index);
             break;
 
-         case BUTTON_BRAKE_OVERIDE:     // button 4 - brake function
-            SetButtonState(state, index);
-            if (GetButtonState(index))
+         case B_DIRECTION:  // button 4 direction
+            break;
+
+         case B_BRAKE_OVERIDE:     // button 5 - brake function
+            P_BUT(Serial.println("Brake overide"));
+//            SetButtonState(index, state);
+            if (GetBooleanState(index))
             {
-//               Motor.EnergiseBrake();
+               Motor.EnergiseBrake();
             }
             else
             {
-//               Motor.BrakePowerOff();
+               Motor.BrakePowerOff();
             }
             break;
 
-         case BUTTON_DYNAMIC_DEPTH:     // button 5 - dynamic depth
+         case B_DYNAMIC_DEPTH:     // button 6 - dynamic depth
             break;
 
-         case BUTTON_DATA_VIEW:     // button 6 - view data
-            Serial.println("Data view");
+         case B_DATA_VIEW:     // button 7 - view data
+            P_BUT(Serial.println("Data view"));
             break;
 
-         case BUTTON_DATA_DOWNLOAD:     // button 7 - download data
-            Serial.println("Data download");
+         case B_DATA_DOWNLOAD:     // button 8 - download data
+            P_BUT(Serial.println("Data download"));
             break;
 
-         case BUTTON_DATA_DELETE:     // button 8 - delete data
-            Serial.println("Data delete");
+         case B_DATA_DELETE:     // button 9 - delete data
+            P_BUT(Serial.println("Data delete"));
             break;
 
-         case BUTTON_SINE2_ENABLE:   // button 9
-            SetButtonState(state, index);
-            Serial.println("Sensor 2 enable");
+         case B_SINE2_ENABLE:   // button 10
+            Serial.printf("Sensor 2 ");
+            if (Button[index].checked)
+               Serial.printf("enable. ");
+            else
+               P_BUT(Serial.printf("disable. "));
+               P_BUT(Serial.printf(" <%d> <%s>\n", index, identifier.c_str()));
+//            SetButtonState(index, state);
             break;
 
-         case BUTTON_SINE3_ENABLE:   // button 10
-            SetButtonState(state, index);
-            Serial.println("Sensor 3 enable");
+         case B_SINE3_ENABLE:   // button 11
+            P_BUT(Serial.printf("Sensor 3 enable. <%d> <%s>\n", index, identifier.c_str()));
+//            SetButtonState(index, state);
             break;
 
          //------------------------------------------------------------------------------
@@ -240,41 +439,31 @@ void CButtons::ActionButton(uint16_t index, String checked, String state)
          // DB[DB_SINE_RUNTIME_MINS] numeric and if exceed, will stops the motor which clears
          // the SineTestRunning flag.
          //
-         case BUTTON_TEST_CONTROL:     // button 11
-            SetButtonState(state, index);
-            Serial.println("Sine start/stop");
-            if (GetButtonState(index))
+         case B_TEST_CONTROL:     // button 12
+//            SetButtonState(index, state);
+            Serial.printf("Sine start/stop  %d\n", index);
+            if (GetBooleanState(index))
             {
-               // Button has just been pushed on.
-               //
-               Serial.println("Starting test");       
-//               StartIntervalTimer(DO_SAMPLE, GetSampleInterval_mSecs());
-//               SampleNumber = 0;
-//               MonitorEntries = 0;  // reset the monitor system
-//               TestElapsedSeconds = 0;
-//               Flag.SineTestRunning = true;
+               StartTheTest();
             }
             else
             {
-               // Button has just been pushed off. Stop the test. This clears the 
-               // flags and resets the boundaries.
-               //
-//               MotorControl.StopTest();
+               StopTheTest();
             }
 
-           Serial.println("Sine start/stop");
+            Serial.println("Sine start/stop");
             break;
 
          //----------------------------------------------------------
-         case BUTTON_SINE_QUICKLOOK:        // button 12
+         case B_SINE_QUICKLOOK:        // button 13
             {
                String jsonString;
                JSONVar values;
                char text[20];
 
-               SetButtonState(state, index);
-               Serial.printf("Sine quicklook %d\n", state.toInt());
-               if (GetButtonState(index))
+//               SetButtonState(index, state);
+               P_BUT(Serial.printf("Sine quicklook %d\n", identifier.toInt()));
+               if (GetBooleanState(index))
                {
                   // This starts a quicklook display of the proposed slug
                   // position.
@@ -286,8 +475,8 @@ void CButtons::ActionButton(uint16_t index, String checked, String state)
                   //    is at its highest during the chosen period.
                   //
 //                  MotorControl.DefineTestBoundaries(  DB_SINE_RUNTIME_MINS, 
-//                                                      GetButtonState(BUTTON_SINE2_ENABLE), 
-//                                                      GetButtonState(BUTTON_SINE3_ENABLE) );
+//                                                      GetButtonState(B_SINE2_ENABLE), 
+//                                                      GetButtonState(B_SINE3_ENABLE) );
                   
 //                  QuickLookStep = MotorControl.GetSubStartValue();
 
@@ -322,11 +511,11 @@ void CButtons::ActionButton(uint16_t index, String checked, String state)
          // DB[DB_SINE_RUNTIME_MINS] numeric and if exceeded, will stop the motor which clears
          // the SweepTestRunning flag.
          //
-         case BUTTON_SWEEP_CONTROL:        // button 13
-            SetButtonState(state, index);
-            Serial.println("Sweep start/stop");
+         case B_SWEEP_CONTROL:        // button 14
+//            SetButtonState(index, state);
+            P_BUT(Serial.println("Sweep start/stop"));
 
-            if (GetButtonState(index))
+            if (GetBooleanState(index))
             {
                // Button has just been pushed on.
                //
@@ -348,16 +537,16 @@ void CButtons::ActionButton(uint16_t index, String checked, String state)
             }
             break;
 
-         case BUTTON_SWEEP_QUICKLOOK:    // button 14
+         case B_SWEEP_QUICKLOOK:    // button 15
             Serial.println("Sweep quicklook");
             {
                String jsonString;
                JSONVar values;
                char text[20];
 
-               SetButtonState(state, index);
-               Serial.printf("Sine quicklook %d\n", state.toInt());
-               if (GetButtonState(index))
+//               SetButtonState(index, state);
+               Serial.printf("Sine quicklook %d\n", identifier.toInt());
+               if (GetBooleanState(index))
                {
                   // This starts a quicklook display of the proposed slug
                   // position.
@@ -395,12 +584,12 @@ void CButtons::ActionButton(uint16_t index, String checked, String state)
             }
             break;
 
-         case BUTTON_LIN_EXP:        // button 15
-            SetButtonState(state, index);
-            Serial.println("Sweep lin/exp");
+         case B_LIN_EXP:        // button 16
+//            SetButtonState(index, state);
+            Serial.printf("Sweep lin/exp %d\n", GetBooleanState(index));
             break;
 
-         case BUTTON_SHOW_PLOTS:    // button 16
+         case B_SHOW_PLOTS:    // button 17
             Serial.println("Show plots");
             break;
 
@@ -411,145 +600,346 @@ void CButtons::ActionButton(uint16_t index, String checked, String state)
 }
 
 //----------------------------------------------------------------------------------------------
+// Enter with <index> pointing at the correct entry in the Button[] array, and <state> containing
+// the current button state.
 //
-void CButtons::ManageMotorUp(uint32_t index, String state)
+void CButtons::HandleWebButton(const String index, const String identifier)
 {
-   if (state == "1")
+   uint16_t i;
+
+   P_BUT(Serial.printf(" Buttons.HandleWebButton index <%d>  identifier <%s>\n", index.toInt(), identifier.c_str()));
+
+   i = index.toInt();
+
+   switch (i)
    {
-      // Request to start the motor going up. Will not be
-      // allowed if down button already on.
-      //
-      if (Button[index + 1].checked != "1")
-      {
-         Button[index].checked = state;
-      }
-      else
-      {
-         Button[index].checked = "0";    // ensure off
-      }
+      case 1:
+         // The UP button.
+         //
+         P_BUT(Serial.printf("%d: %d %d %d\n", i, Button[1].checked, Button[2].checked, Button[3].checked));
+         if (!GetBooleanState(B_GO_DOWN))     // if not going down
+         {
+            if (GetBooleanState(B_GO_UP))   // if going up
+            {
+               // Start motor running up.
+               P_BUT(Serial.println("must start"));
+               ButtonOn(B_GO_UP);
+               ButtonOn(B_STOP);
+            }
+            else
+            {
+               // Stop motor
+               P_BUT(Serial.println("must stop"));
+               ButtonOff(B_GO_UP);
+               ButtonOff(B_STOP);
+            }
+         }
+         break;
+
+      case 2:
+         // The STOP button.
+         //
+         P_BUT(Serial.printf("%d: %d %d %d\n", i, Button[1].checked, Button[2].checked, Button[3].checked));
+         if (GetBooleanState(B_GO_UP))
+         {
+            Button[B_GO_UP].checked = Button[B_GO_DOWN].checked = Button[B_STOP].checked = false;
+            ButtonOff(B_GO_UP);
+            ButtonOff(B_STOP);
+         }
+         else if (GetBooleanState(B_GO_DOWN))
+         {
+            Button[B_GO_UP].checked = Button[B_GO_DOWN].checked = Button[B_STOP].checked = false;
+            ButtonOff(B_GO_DOWN);
+            ButtonOff(B_STOP);
+         }
+         break;
+
+      case 3:
+         // The DOWN button.
+         //
+         P_BUT(Serial.printf("%d: %d %d %d\n", i, Button[1].checked, Button[2].checked, Button[3].checked));
+         if (!GetBooleanState(B_GO_UP))
+         {
+            if (GetBooleanState(B_GO_DOWN))
+            {
+               // Start motor running down.
+               P_BUT(Serial.println("must start"));
+               ButtonOn(B_GO_DOWN);
+               ButtonOn(B_STOP);
+            }
+            else
+            {
+               P_BUT(Serial.println("must stop"));
+               ButtonOff(B_GO_DOWN);
+               ButtonOff(B_STOP);
+            }
+         }
+         break;
+      case 4:
+      case 5:
+      case 6:
+      case 10:
+      case 11:
+      case 12:
+      case 14:
+      case 15:
+      case 16:
+         P_BUT(Serial.printf("Index: %d: State: %d\n", i, Button[i].checked));
+         if (Button[i].checked)
+         {
+            ButtonOn(i);
+         }
+         else
+         {
+            ButtonOff(i);
+         }
+         break;
+
+      case 0:
+      default:
+         break;
+   }
+
+//   Serial.printf(">%d: %d %d %d\n", i, Button[1].checked, Button[2].checked, Button[3].checked);
+}
+
+//----------------------------------------------------------------------------------------------
+//
+void CButtons::StartTheTest(void)
+{
+   // Button has just been pushed on.
+   //
+   Serial.println("Starting test");   
+   Temp.entries = 0;
+#ifdef SIMULATING   
+   WellSimulator.ClearSampleNumber();
+#endif   
+   ManageSamples.WriteSitePreamble();
+   Network.StartSample();
+   Timers.StartIntervalTimer(DO_SAMPLE, Data.GetDataEntryNumericValue(DB_SAMPLE_INTERVAL) * 1000);
+   //               SampleNumber = 0;
+//               MonitorEntries = 0;  // reset the monitor system
+//               TestElapsedSeconds = 0;
+//               Flag.SineTestRunning = true;
+}
+
+//----------------------------------------------------------------------------------------------
+//
+void CButtons::StopTheTest(void)
+{
+   // Button has just been pushed off. Stop the test. This clears the 
+   // flags and resets the boundaries.
+   //
+   Serial.println("Stopping test");       
+   Timers.StartIntervalTimer(DO_SAMPLE, BACKGROUND_SAMPLE_TIME);
+//               MotorControl.StopTest();
+}
+
+//----------------------------------------------------------------------------------------------
+//
+void CButtons::ButtonOn(const uint16_t i)
+{
+   JSONVar values;
+
+   values["index"] = i;
+   values["state"] = Button[i].checked;
+   values["text"] = Button[i].onText;
+   values["color"] = Button[i].onColor;
+   NotifyClients(JSON.stringify(values));
+}
+
+//----------------------------------------------------------------------------------------------
+//
+void CButtons::ButtonOff(const uint16_t i)
+{
+   JSONVar values;
+
+   values["index"] = i;
+   values["state"] = Button[i].checked;
+   values["text"] = Button[i].offText;
+   values["color"] = Button[i].offColor;
+   NotifyClients(JSON.stringify(values));
+}
+
+//----------------------------------------------------------------------------------------------
+// This function must collect the current states of all push on/push off buttons and record
+// their states in a json string. For each button there needs to be an entry for its text
+// and an entry for its colour.
+//
+String CButtons::GetButtonTextAndColors(void)
+{
+   JSONVar data;
+   char text[20];
+   uint32_t index;
+   
+   P_BUT(sprintf(text, "%d", NumPPButtons));
+   data["entries"] = text;
+   for (int i=0; i<NumPPButtons; i++)
+   {
+      index = PPButtons[i].id;
+      P_BUT(sprintf(text, "button%d", i));
+      data[(const char *)&text] = AssembleStates(i, index);
+   }
+   return JSON.stringify(data);
+}
+
+//----------------------------------------------------------------------------------------------
+//
+String CButtons::AssembleStates(uint32_t i, uint32_t index)
+{
+   JSONVar data;
+
+   data["index"] = PPButtons[i].id;
+   data["entry"] = PPButtons[i].name;
+   if (GetBooleanState(index))
+   {
+      P_BUT(Serial.printf("%d ON\n", index));
+      data["text"] = Button[index].onText; 
+      data["color"] = Button[index].onColor;
    }
    else
    {
-      Button[index].checked = "0";
+      P_BUT(Serial.printf("%d OFF\n", index));
+      data["text"] = Button[index].offText; 
+      data["color"] = Button[index].offColor;
    }
+   P_BUT(Serial.println(data));
+   return JSON.stringify(data);
+}
 
-   if (Button[index].checked == "1")
+//----------------------------------------------------------------------------------------------
+// Arrive here to action the MotorIsRunningUP and MotorIsRunningDOWN states with the
+// correct motor actions..
+//
+void CButtons::ManageMotorState(const uint32_t index)
+{
+   P_BUT(Serial.printf(" Buttons.ManageMotorState:  index <%d>  checked <%d>\n", index, Button[index].checked));
+
+   // The stop buuton overides the other buttons, but if the OFF button is
+   // off and either one or the other is ON, the motor runs.
+   //
+   if ( !Button[B_STOP].checked &&
+        ( (Button[B_GO_UP].checked && !Button[B_GO_DOWN].checked) || 
+          (Button[B_GO_DOWN].checked && !Button[B_GO_UP].checked) ) )
    {
       float speed;
 
       // First update the motor speed from the current user setting.
       //
-//      Motor.SetWinchSpeedRPM(DB[DB_MOTOR_LIFT_RPM].HtmlValue.toInt());
+      Motor.SetWinchSpeedRPM(Data.GetDataEntry(DB_MOTOR_LIFT_RPM).HtmlValue.toInt());
 
       // Get the actual winch speed (rps) back.
       //
-//      speed = Motor.GetWinchSpeed();
+      speed = Motor.GetWinchSpeed();
+      if (Button[B_GO_DOWN].checked)
+      {
+         // Negative speed implies going down.
+         //
+         speed = -speed;
+         Serial.println("  Motor is started DOWN");
+      }
+      else if (Button[B_GO_UP].checked)
+      {
+         Serial.println("  Motor is started UP");
+      }
 
-      Serial.println(speed);
-      
       // Run the motor at that speed.
       //
-//      Motor.RunMotorAtRevsPerSec(speed);
-//      Motor.EnergiseBrake();
+      Motor.RunMotorAtRevsPerSec(speed);
+      Motor.EnergiseBrake();
    }
    else
    {
-//      Motor.SoftStop();
-//      Motor.BrakePowerOff();
-   }
-}
-
-//----------------------------------------------------------------------------------------------
-//
-void CButtons::ManageMotorDown(uint32_t index, String state)
-{
-   Serial.println("ManageMotorDown");
-   if (state == "1")
-   {
-      // Request to start the motor going down. Will not be
-      // allowed if up button already on.
+      // The motor is stopped.
       //
-      if (Button[index - 1].checked != "1")
-      {
-         Button[index].checked = state;
-      }
-      else
-      {
-         Button[index].checked = "0";    // ensure off
-      }
-   }
-   else
-   {
-      Button[index].checked = "0";
-   }
-
-   if (Button[index].checked == "1")
-   {
-      float speed;
-
-      // First update the motor speed from the current user setting.
-      //
-//      Motor.SetWinchSpeedRPM(DB[DB_MOTOR_LIFT_RPM].HtmlValue.toInt());
-
-      // Get the actual winch speed (rps) back.
-      //
-//      speed = Motor.GetWinchSpeed();
-
-      // Run the motor at that speed only now in the other direction.
-      //
-//      Motor.RunMotorAtRevsPerSec(-speed);
-//      Motor.EnergiseBrake();
-   }
-   else
-   {
-//      Motor.SoftStop();
-//      Motor.BrakePowerOff();
+      Serial.println("  Motor is stopped");      
+      Motor.SoftStop();
+      Motor.BrakePowerOff();
    }
 }
 
 //-----------------------------------------------------------------------------
-// Get a button state.
+// Return the DB[i].JsonValue as a directory name.
 //
-boolean CButtons::GetButtonState(uint32_t index)
-{
-   if (Button[index].checked.toInt() == 0)
-   {
-      return false;
-   }
-   else
-   {
-      return true;
-   }
-}
-
-//----------------------------------------------------------------------------------------------
-// Use this function to make a button's state permanent, ie a press on/press off
-// button type.
-//
-boolean CButtons::SetButtonState(String state, const uint32_t index)
-{
-   if (state == "1")
-   {
-      Button[index].checked = "1";
-      return true;
-   }
-   else
-   {
-      Button[index].checked = "0";
-      return false;
-   }
-}
-
-//-----------------------------------------------------------------------------
-// Return the DB[i].InputParameter as a directory name.
-//
-String CButtons::CreateDirectoryName(uint32_t index)
+String CButtons::CreateFileName(const uint32_t index) const
 {
    String name;
    
    name = "/Btn_";
    name += Button[index].id;
-   name += ".st";
-//   Serial.printf("  %s   ", name);
+//   name += ".st";
+   P_BUT(Serial.printf("  %s   ", name));
    return name;
+}
+
+//-----------------------------------------------------------------------------
+//
+void CButtons::EnsureNonSavedIOButtonsOff(void)
+{
+   Serial.println(" EnsureNonSavedIOButtonsOff");
+
+   for (int i=1; i<NumButtons; i++)
+   {
+      // If this button should not have its state saved, ensure
+      // it is really off on startup.
+      //
+      if ( (Button[i].states & IS_GPIO_PORT) && (Button[i].states & STATE_IS_SAVED) )
+      {
+         digitalWrite(Button[i].id.toInt(), 0);
+      }
+   }
+}
+
+//-----------------------------------------------------------------------------
+// The <state> parameter is either "1" or "0", whereas the <checked> parameter
+// is true or false.
+// Some buttons are push on/push off, and in that case, each time the button 
+// is pressed it changes state and the current state is recorded in the Button 
+// array <checked> boolean variable.
+//
+void CButtons::SetButtonState(const uint32_t index, const String state)
+{
+   P_BUT(Serial.printf("Setting button %d state <%s>\n", index, state.c_str()));
+
+   if (Button[index].states & IS_PUSHON_PUSHOFF)
+   {
+      if (state.toInt() == 0)
+      {
+         Button[index].checked = false;
+      }
+      else
+      {
+         Button[index].checked = true;
+      }
+   }
+   else
+   {
+      Serial.println("State not catered");
+   }
+}
+
+//-----------------------------------------------------------------------------
+//
+boolean CButtons::GetBooleanState(uint32_t index)
+{
+//   Serial.printf(" Button %d, state %d\n", index, Button[index].checked);
+   return Button[index].checked;
+}
+
+//-----------------------------------------------------------------------------
+//
+String CButtons::GetButtonStateAsString(const uint32_t index) const
+{
+   String state;
+
+   if (Button[index].checked)
+   {
+      state = "1";
+   }
+   else
+   {
+      state = "0";
+   }
+
+   return state;
 }

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html>
+   <head>
+      <title>LIMAX SLUG TESTER</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      <link rel="icon" href="data:,">
+      <link rel="stylesheet" type="text/css" href="topnavstyle.css">
+
+      <style>
+         html {
+            font-family: helvetica;
+            text-align: center;
+         }
+         .p {
+            font-size: 10px;
+         }
+         .content {
+            max-width: 700px; 
+            margin: 0 auto;
+         }
+         body {
+            margin: 0 auto;
+            background-color: lightgray;      
+         }
+         .page_title {
+            margin: 0 auto;
+            max-width: 700px; 
+            font-size: 14px;
+            color: darkblue;
+            border: 1px solid;
+         }
+         .myframe {
+            margin: 0 auto;
+            border-radius: 5px;
+            background-color: lightyellow;      
+            box-shadow: 10px 10px 12px 1px rgba(140,140,140,.5);
+            border: 2px solid;
+         }
+         .mygrid {
+            max-width: 700px; 
+            margin: 0 auto;
+            display: grid;
+            grid-gap: 2px;
+            grid-template-columns: repeat(auto-fit, minmax(50px, 1fr));
+            border: 2px solid;
+         }
+         .text_box {
+            padding: 10px 10px 10px 10px;
+            background-color: rgb(206, 235, 188);
+            text-align: left;
+         }
+         .box {
+            padding: 1px 10px 20px 1px;
+            font-size: 15px;
+            font-weight: bold;
+         }
+         button {
+            margin: 0 auto;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            width: 120px;
+            height: 40px;
+            border-radius: 5px;
+            vertical-align: middle;
+            box-shadow: 5px 5px #999;
+         }
+         button:active {
+            box-shadow: 1px 1px #666;
+         }
+         .button-use {
+            background-color: #3e8e41;
+            color: white;
+         }
+         .numeric {
+            margin: 0 auto;
+            text-align: center;
+            font-size: 25px;
+            font-weight: bold;
+         }
+         .company {
+            background-color: lightyellow;
+            padding: 25px;
+            margin: 0 auto;
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+         }
+         input[type=text], select {
+            background-color: lightblue;
+            padding: 10px 1px 10px 1px;
+            font-size: 25px;
+            font-weight: bold;
+            text-align: center;
+            width: 80px;
+            height: 10px;
+            border: 2px solid black;
+         }
+      </style>
+      
+      <script>
+         // Number inputs.
+         //
+         const PERIOD1_MINS      =     "p1_mins"
+         const PERIOD2_MINS      =     "p2_mins"
+         const PERIOD3_MINS      =     "p3_mins"
+         const PERIOD1_CMS       =     "p1_cms"
+         const PERIOD2_CMS       =     "p2_cms"
+         const PERIOD3_CMS       =     "p3_cms"
+         const PERIOD1_DEGS      =     "p1_degs"
+         const PERIOD2_DEGS      =     "p2_degs"
+         const PERIOD3_DEGS      =     "p3_degs"
+
+         const SINE_TIME_MINS     =     "rt_mins"
+         const DEEPNESS           =     "deepness"
+
+         const SENSOR_1_PRESS       =  "press1"
+         const SENSOR_1_PRESS_UNIT  =  "p1unit"
+         const SENSOR_1_TEMP        =  "temp1"
+         const SENSOR_1_TEMP_UNIT   =  "t1unit"
+
+         const SENSOR_2_PRESS       =  "press2"
+         const SENSOR_2_PRESS_UNIT  =  "p2unit"
+         const SENSOR_2_TEMP        =  "temp2"
+         const SENSOR_2_TEMP_UNIT   =  "t2unit"
+
+         const SENSOR_3_PRESS       =  "press3"
+         const SENSOR_3_PRESS_UNIT  =  "p3unit"
+         const SENSOR_3_TEMP        =  "temp3"
+         const SENSOR_3_TEMP_UNIT   =  "t3unit"
+
+         const TEST_ELAPSED_TIME    =  "etime"
+         const SAMPLE_INTERVAL      =  "interval"
+
+         // Buttons.
+         //
+         const B_SINE2_ENABLE       =  10                // button index
+         const SINE2_INCLUDE_ID     =  "B_SINE2_ENABLE"  // button name
+         const B_SINE3_ENABLE       =  11
+         const SINE3_INCLUDE_ID     =  "B_SINE3_ENABLE"   
+         const B_TEST_CONTROL       =  12
+         const TEST_CONTROL_ID      =  "B_TEST_CONTROL"
+
+         window.addEventListener('load', onLoad);
+         window.addEventListener('load', getValues);
+
+         var buttonClicked = false;
+
+         //-------------------------------------------------------------------
+         //
+         function  onLoad(event) {
+            initWebSocket();
+            initButtons();
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function initWebSocket() {
+            console.log('Trying to open a WebSocket connection…');
+            websocket = new WebSocket(gateway);
+            websocket.onopen    = onOpen;
+            websocket.onclose   = onClose;
+            websocket.onmessage = onMessage;
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onOpen(event) {
+            console.log('Connection opened');
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onClose(event) {
+            console.log('Connection closed');
+            setTimeout(initWebSocket, 2000);
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function onMessage(event) 
+         {
+            console.log("onMessage: event.data:");
+//            console.log(event.data);
+            var obj = JSON.parse(event.data);  // save JSON data
+            console.log(obj);
+
+            if (obj.text != null)
+            {
+               if (obj.index == B_SINE2_ENABLE)
+               {
+                  console.log(obj.state, obj.text);
+                  document.getElementById(SINE2_INCLUDE_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.color, SINE2_INCLUDE_ID);
+               }
+               else if (obj.index == B_SINE3_ENABLE)
+               {
+                  console.log(obj.text);
+                  document.getElementById(SINE3_INCLUDE_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.color, SINE3_INCLUDE_ID);
+               }
+               else if (obj.index = B_TEST_CONTROL)
+               {
+                  console.log(obj.text);
+                  document.getElementById(TEST_CONTROL_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.color, TEST_CONTROL_ID);
+               }
+            }
+         }
+
+         //-------------------------------------------------------------------
+         //
+         function buttonColor(state, color, identifier)
+         {
+            console.log(state, identifier, color);
+            
+            if (state)
+            {
+               console.log("ON", identifier, color);
+               document.getElementById(identifier).style.backgroundColor = color;
+            }
+            else
+            {
+               console.log("OFF", identifier, color);
+               document.getElementById(identifier).style.backgroundColor = color;
+            }
+         }  
+
+         //-----------------------------------------------------------------------------
+         function initButtons() 
+         {
+            console.log("InitButtons");
+            document.getElementById(SINE2_INCLUDE_ID).addEventListener('click', exclude2);
+            document.getElementById(SINE3_INCLUDE_ID).addEventListener('click', exclude3);
+            document.getElementById(TEST_CONTROL_ID).addEventListener('click', testControl);
+         }
+
+         //-----------------------------------------------------------------------------
+         function exclude2(event) {
+            let t = ["button", SINE2_INCLUDE_ID, B_SINE2_ENABLE];
+            console.log(t);
+            websocket.send(t);
+         }
+
+         //-----------------------------------------------------------------------------
+         function exclude3(event) {
+            let t = ["button", SINE3_INCLUDE_ID, B_SINE3_ENABLE];
+            console.log(t);
+            websocket.send(t);
+         }
+
+         //-----------------------------------------------------------------------------
+         function testControl(event) {
+            let t = ["button", TEST_CONTROL_ID, B_TEST_CONTROL];
+            console.log(t);
+            websocket.send(t);
+         }
+         
+         //-----------------------------------------------------------------------------
+         // Function to get current readings from the input fields in response to the
+         // webpage being loaded or refreshed.
+         //
+         function getValues() 
+         {
+            var xhr = new XMLHttpRequest();
+
+            console.log("getValues");
+            xhr.onreadystatechange = function () 
+            {
+               if (this.readyState == 4 && this.status == 200)
+               {
+                  // The obj names are defined in CSpiff::GetCurrentInputValues().
+                  //
+                  var obj = JSON.parse(this.responseText);
+//                  console.log(obj);
+                  document.getElementById(PERIOD1_MINS).value        = obj.p1_mins;
+                  document.getElementById(PERIOD1_CMS).value         = obj.p1_cms;
+//                  document.getElementById(PERIOD1_DEGS).value        = obj.p1_degs;
+                  document.getElementById(PERIOD2_MINS).value        = obj.p2_mins;
+                  document.getElementById(PERIOD2_CMS).value         = obj.p2_cms;
+                  document.getElementById(PERIOD2_DEGS).value        = obj.p2_degs;
+                  document.getElementById(PERIOD3_MINS).value        = obj.p3_mins;
+                  document.getElementById(PERIOD3_CMS).value         = obj.p3_cms;
+                  document.getElementById(PERIOD3_DEGS).value        = obj.p3_degs;
+
+                  document.getElementById(SINE_TIME_MINS).value        = obj.rt_mins;
+                  document.getElementById(DEEPNESS).value            = obj.deepness;
+
+                  document.getElementById(SENSOR_1_PRESS).innerHTML        = obj.press1;
+                  document.getElementById(SENSOR_1_PRESS_UNIT).innerHTML   = obj.p1unit;
+//                  document.getElementById(SENSOR_1_TEMP).innerHTML         = obj.temp1;
+//                  document.getElementById(SENSOR_1_TEMP_UNIT).innerHTML    = obj.t1unit;
+
+                  document.getElementById(SENSOR_2_PRESS).innerHTML        = obj.press2;
+                  document.getElementById(SENSOR_2_PRESS_UNIT).innerHTML   = obj.p2unit;
+//                  document.getElementById(SENSOR_2_TEMP).innerHTML         = obj.temp2;
+//                  document.getElementById(SENSOR_2_TEMP_UNIT).innerHTML    = obj.t2unit;
+
+                  document.getElementById(SENSOR_3_PRESS).innerHTML        = obj.press3;
+                  document.getElementById(SENSOR_3_PRESS_UNIT).innerHTML   = obj.p3unit;
+//                  document.getElementById(SENSOR_3_TEMP).innerHTML         = obj.temp3;
+//                  document.getElementById(SENSOR_3_TEMP_UNIT).innerHTML    = obj.t3unit;
+
+                  document.getElementById(TEST_ELAPSED_TIME).innerHTML     = obj.etime;
+
+                  document.getElementById(SAMPLE_INTERVAL).value       = obj.interval;
+               }
+            }; 
+            xhr.open("GET", "/values", true);
+            xhr.send();
+         } 
+
+         //-----------------------------------------------------------------------------
+         // Create an event source to listen for events.
+         //
+         if (!!window.EventSource) 
+         {
+            var source = new EventSource('/events');
+
+            source.addEventListener('open', function(e) 
+            {
+               console.log("Events connected");
+            }, false);
+
+            source.addEventListener('error', function(e)
+            {
+               if (e.target.readyState != EventSource.OPEN)
+               {
+                  console.log("Events disconnected");
+               }
+            }, false);
+
+            source.addEventListener('new_values', function(e)
+            {
+               console.log("new_values");
+               var obj = JSON.parse(e.data);
+//               console.log(obj);
+               document.getElementById(TEST_ELAPSED_TIME).innerHTML     = obj.etime;
+               
+               document.getElementById(SENSOR_1_PRESS).innerHTML        = obj.press1;
+               document.getElementById(SENSOR_1_PRESS_UNIT).innerHTML   = obj.p1unit;
+//               document.getElementById(SENSOR_1_TEMP).innerHTML         = obj.temp1;
+//               document.getElementById(SENSOR_1_TEMP_UNIT).innerHTML    = obj.t1unit;
+
+               document.getElementById(SENSOR_2_PRESS).innerHTML        = obj.press2;
+               document.getElementById(SENSOR_2_PRESS_UNIT).innerHTML   = obj.p2unit;
+//               document.getElementById(SENSOR_2_TEMP).innerHTML         = obj.temp2;
+//               document.getElementById(SENSOR_2_TEMP_UNIT).innerHTML    = obj.t2unit;
+
+               document.getElementById(SENSOR_3_PRESS).innerHTML        = obj.press3;
+               document.getElementById(SENSOR_3_PRESS_UNIT).innerHTML   = obj.p3unit;
+//               document.getElementById(SENSOR_3_TEMP).innerHTML         = obj.temp3;
+//               document.getElementById(SENSOR_3_TEMP_UNIT).innerHTML    = obj.t3unit;
+
+            }, false);
+
+            //-------------------------------------------------------------------
+            //
+            source.addEventListener('message', function(e) 
+            {
+               console.log("message");
+//               console.log(e.data);
+
+               var obj = JSON.parse(e.data);  // save JSON data
+               console.log(obj);
+               for (let i=0; i < obj.entries; i++)
+               {
+                  let index = "button" + i;
+//                  console.log(index);
+//                  console.log(obj[index]);
+                  var line = JSON.parse(obj[index]);
+//                  console.log(line);
+                  if (line.index == B_SINE2_ENABLE || line.index == B_SINE3_ENABLE || line.index == B_TEST_CONTROL)
+                  {
+                     document.getElementById(line.entry).innerHTML = line.text;
+                     document.getElementById(line.entry).style.backgroundColor = line.color;
+                  }
+               }
+            }, false);
+         }
+      </script>
+   </head>
+
+   <body>
+      <div class="content">
+         <div class="topnav" id="myTopnav">
+            <a href="#" class="disabled">LIMAX SLUG<br>TEST SYSTEM</a>
+            <div class="topnav-right">
+               <a href="/">SLUG<br>POSITIONING</a>
+               <a href="/setup">SITE<br>SETUP</a>
+               <a href="/basicsine">BASIC<br>SINUSOIDAL</a>
+               <a href="/sweep">SWEEP<br>SINUSOIDAL</a>
+               <a href="/plot4">SHOW<br>PLOTS</a>
+               <a href="/datafile">DATA<br>CONTROL</a>
+               <a href="/equipment">EQUIPMENT<br>SETUP</a>
+            </div>
+            <a href="javascript:void(0);" class="icon" onclick="handleNavBar()">
+               <i class="fa fa-bars"></i>
+            </a>
+         </div>
+      
+         <div class="myframe">
+            <div class="page_title">
+               <h1>BASIC SINE TEST CONTROL</h1>
+            </div>
+
+            <!-- Row 1 -->
+            <div class="mygrid">
+               <div class="text_box">
+                  <label>You can select up to three independant sine waves. Each can have a different period and phase. 
+                     The amplitudes are relative to each other. For example anplitudes of 1, 1, 2 will mean SINE 3 will have twice 
+                     the amplitude of SINE1 and SINE 2.<br><br>The total slug travel sets the actual amplitude.
+                  </label>
+               </div>
+            </div>
+
+            <!-- Row 1 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label><br><br>SINE 1</label>
+               </div>
+               <div class="box">
+                  <label><br>PERIOD (MINS)<br></label>
+                  <input type="text", id="p1_mins", name="isnumber", min="1", max="1200", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label>RELATIVE AMPLITUDE<br></label>
+                  <input type="text", id="p1_cms", name="isnumber", min="1", max="5000", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+               </div>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>SINE 2<br></label>
+                  <button class="button-use" id="B_SINE2_ENABLE"><span id="EX2">%STATE_EX2%</span></button>
+               </div>
+               <div class="box">
+                  <label><br>PERIOD (MINS)<br></label>
+                  <input type="text", id="p2_mins", name="isnumber", min="1", max="1200", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label>RELATIVE AMPLITUDE<br></label>
+                  <input type="text", id="p2_cms", name="isnumber", min="1", max="5000", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label><br>PHASE (DEGS)<br></label>
+                  <input type="text", id="p2_degs", name="isnumber", min="-360", max="360", onchange="dataChangeFunction(this)">
+               </div>
+            </div>
+
+            <!-- Row 3 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>SINE 3<br></label>
+                  <button class="button-use" id="B_SINE3_ENABLE"><span id="EX3">%STATE_EX3%</span></button>
+               </div>
+               <div class="box">
+                  <label><br>PERIOD (MINS)<br></label>
+                  <input type="text", id="p3_mins", name="isnumber", min="1", max="1200", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label>RELATIVE AMPLITUDE<br></label>
+                  <input type="text", id="p3_cms", name="isnumber", min="1", max="5000", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label><br>PHASE (DEGS)<br></label>
+                  <input type="text", id="p3_degs", name="isnumber", min="-360", max="360", onchange="dataChangeFunction(this)">
+               </div>
+            </div>
+
+            <!-- Row 4 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>TEST DURATION (MINS)<br></label>
+                  <input type="text", id="rt_mins", name="isnumber", min="1", max="1200", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label><br>TOTAL SLUG TRAVEL (METRES)<br></label>
+                  <input type="text", id="deepness", name="isnumber", min="1", max="2000", onchange="dataChangeFunction(this)">
+               </div>
+               <div class="box">
+                  <label><br>TEST CONTROL<br><br></label>
+                  <button class="button-use" id="B_TEST_CONTROL"><span id="CNTRL">%STATE_CNTRL%</span></button>
+               </div>
+               <div class="box">
+                  <label><br>TEST QUICK LOOK<br><br></label>
+                     <a href="/sine-quicklook">
+                     <button>QUICK</button>
+                     </a>
+               </div>
+            </div>
+
+            <!-- Row 6 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>RUNTIME (SECS)<br></label>
+                  <span id="etime"></span><br>
+               </div>
+               <div class="box">
+                  <label><br>SENSOR 1<br></label>
+                  <span id="press1"></span><span id="p1unit"></span><br>
+               </div>
+               <div class="box">
+                  <label><br>SENSOR 2<br></label>
+                  <span id="press2"></span><span id="p2unit"></span><br>
+               </div>
+               <div class="box">
+                  <label><br>SENSOR 3<br></label>
+                  <span id="press3"></span><span id="p3unit"></span><br>
+               </div>
+            </div>
+
+            <!-- Row 7 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>SAMPLE INTERVAL</label>
+                  <input type="text", id="interval", name="isnumber", min="2", max="900", onchange="dataChangeFunction(this)">
+                  <label>(SECONDS)</label>
+               </div>
+            </div>
+
+            <!-- Row 8 -->
+            <div class="company">
+               <div>
+                  <label>Kremford Pty Ltd</label>
+               </div>
+            </div>
+         </div>
+      </div>
+   </body>
+
+<script src="/newscript.js"></script>
+</html>
