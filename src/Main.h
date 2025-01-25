@@ -19,9 +19,9 @@
 #include "Ledscreen.h"
 
 
-#define  LIMAX_CONTROLLER
+//#define  LIMAX_CONTROLLER
 //#define  LED_SCREEN
-//#define  SIMULATING
+#define  SIMULATING
 
 // New line
 

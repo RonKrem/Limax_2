@@ -131,6 +131,7 @@
 
          const TEST_ELAPSED_TIME    =  "etime"
          const SAMPLE_INTERVAL      =  "interval"
+         const DATAFILE_NAME        =  "filename"
 
          // Buttons.
          //
@@ -272,7 +273,7 @@
                   // The obj names are defined in CSpiff::GetCurrentInputValues().
                   //
                   var obj = JSON.parse(this.responseText);
-//                  console.log(obj);
+                  console.log(obj);
                   document.getElementById(PERIOD1_MINS).value        = obj.p1_mins;
                   document.getElementById(PERIOD1_CMS).value         = obj.p1_cms;
 //                  document.getElementById(PERIOD1_DEGS).value        = obj.p1_degs;
@@ -304,6 +305,7 @@
                   document.getElementById(TEST_ELAPSED_TIME).innerHTML     = obj.etime;
 
                   document.getElementById(SAMPLE_INTERVAL).value       = obj.interval;
+                  document.getElementById(DATAFILE_NAME).value         = obj.filename;
                }
             }; 
             xhr.open("GET", "/values", true);
@@ -406,16 +408,6 @@
 
             <!-- Row 1 -->
             <div class="mygrid">
-               <div class="text_box">
-                  <label>You can select up to three independant sine waves. Each can have a different period and phase. 
-                     The amplitudes are relative to each other. For example anplitudes of 1, 1, 2 will mean SINE 3 will have twice 
-                     the amplitude of SINE1 and SINE 2.<br><br>The total slug travel sets the actual amplitude.
-                  </label>
-               </div>
-            </div>
-
-            <!-- Row 1 -->
-            <div class="mygrid">
                <div class="box">
                   <label><br><br>SINE 1</label>
                </div>
@@ -428,6 +420,9 @@
                   <input type="text", id="p1_cms", name="isnumber", min="1", max="5000", onchange="dataChangeFunction(this)">
                </div>
                <div class="box">
+                  <label><br>FILENAME<br></label>
+                  <textarea id ="filename", name="isheader", cols="20", rows="1", onchange="dataChangeFunction(this)">
+                  </textarea>
                </div>
             </div>
 

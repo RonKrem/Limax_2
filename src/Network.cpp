@@ -53,7 +53,9 @@ AddressTableEntryType NodeAddressTable[] =
 {
 //   {"B0:B2:1C:9D:50:AC", SENSOR_NOT_PRESENT, 0},
 //   {"B0:B2:1C:9D:62:2C", SENSOR_NOT_PRESENT, 0},
-//   {"B0:B2:1C:9D:62:50", SENSOR_NOT_PRESENT, 0},
+   {"B0:B2:1C:9D:62:50", SENSOR_NOT_PRESENT, 0},
+
+
    {"C0:5D:89:AA:63:00", SENSOR_NOT_PRESENT, 0},
    {"C0:5D:89:A9:2C:04", SENSOR_NOT_PRESENT, 0},
 };
