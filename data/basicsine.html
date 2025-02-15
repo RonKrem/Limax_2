@@ -130,7 +130,8 @@
          const SENSOR_3_TEMP_UNIT   =  "t3unit"
 
          const TEST_ELAPSED_TIME    =  "etime"
-         const SAMPLE_INTERVAL      =  "interval"
+         const PLOT_INTERVAL        =  "plot"
+         const RECORD_INTERVAL      =  "record"
          const DATAFILE_NAME        =  "filename"
 
          // Buttons.
@@ -141,6 +142,8 @@
          const SINE3_INCLUDE_ID     =  "B_SINE3_ENABLE"   
          const B_TEST_CONTROL       =  12
          const TEST_CONTROL_ID      =  "B_TEST_CONTROL"
+         const B_SINE_QUICKLOOK  =  13
+         const SINE_QUICKLOOK_ID =  "B_SINE_QUICKLOOK"
 
          window.addEventListener('load', onLoad);
          window.addEventListener('load', getValues);
@@ -182,7 +185,7 @@
          function onMessage(event) 
          {
             console.log("onMessage: event.data:");
-//            console.log(event.data);
+            //            console.log(event.data);
             var obj = JSON.parse(event.data);  // save JSON data
             console.log(obj);
 
@@ -205,6 +208,12 @@
                   console.log(obj.text);
                   document.getElementById(TEST_CONTROL_ID).innerHTML = obj.text;
                   buttonColor(obj.state, obj.color, TEST_CONTROL_ID);
+               }
+               else if (obj.index = B_SINE_QUICKLOOK)
+               {
+                  console.log(obj.text);
+                  document.getElementById(SINE_QUICKLOOK_ID).innerHTML = obj.text;
+                  buttonColor(obj.state, obj.color, SINE_QUICKLOOK_ID);
                }
             }
          }
@@ -234,6 +243,7 @@
             document.getElementById(SINE2_INCLUDE_ID).addEventListener('click', exclude2);
             document.getElementById(SINE3_INCLUDE_ID).addEventListener('click', exclude3);
             document.getElementById(TEST_CONTROL_ID).addEventListener('click', testControl);
+            document.getElementById(SINE_QUICKLOOK_ID).addEventListener('click', quicklookControl);
          }
 
          //-----------------------------------------------------------------------------
@@ -253,6 +263,13 @@
          //-----------------------------------------------------------------------------
          function testControl(event) {
             let t = ["button", TEST_CONTROL_ID, B_TEST_CONTROL];
+            console.log(t);
+            websocket.send(t);
+         }
+
+         //-----------------------------------------------------------------------------
+         function quicklookControl(event) {
+            let t = ["button", SINE_QUICKLOOK_ID, B_SINE_QUICKLOOK];
             console.log(t);
             websocket.send(t);
          }
@@ -304,7 +321,8 @@
 
                   document.getElementById(TEST_ELAPSED_TIME).innerHTML     = obj.etime;
 
-                  document.getElementById(SAMPLE_INTERVAL).value       = obj.interval;
+                  document.getElementById(RECORD_INTERVAL).value       = obj.record;
+//                  document.getElementById(PLOT_INTERVAL).value         = obj.plot;
                   document.getElementById(DATAFILE_NAME).value         = obj.filename;
                }
             }; 
@@ -353,6 +371,9 @@
                document.getElementById(SENSOR_3_PRESS_UNIT).innerHTML   = obj.p3unit;
 //               document.getElementById(SENSOR_3_TEMP).innerHTML         = obj.temp3;
 //               document.getElementById(SENSOR_3_TEMP_UNIT).innerHTML    = obj.t3unit;
+               
+//                  document.getElementById(PLOT_INTERVAL).value         = obj.plot;
+                  document.getElementById(RECORD_INTERVAL).innerHTML       = obj.record;
 
             }, false);
 
@@ -371,7 +392,7 @@
 //                  console.log(index);
 //                  console.log(obj[index]);
                   var line = JSON.parse(obj[index]);
-//                  console.log(line);
+                  console.log(line);
                   if (line.index == B_SINE2_ENABLE || line.index == B_SINE3_ENABLE || line.index == B_TEST_CONTROL)
                   {
                      document.getElementById(line.entry).innerHTML = line.text;
@@ -482,8 +503,7 @@
                </div>
                <div class="box">
                   <label><br>TEST QUICK LOOK<br><br></label>
-                     <a href="/sine-quicklook">
-                     <button>QUICK</button>
+                  <button class="button-use" id="B_SINE_QUICKLOOK"><span id="CNTRL">%SINE_QUICKLOOK_CNTRL%</span></button>
                      </a>
                </div>
             </div>
@@ -491,7 +511,7 @@
             <!-- Row 6 -->
             <div class="mygrid">
                <div class="box">
-                  <label><br>RUNTIME (SECS)<br></label>
+                  <label><br>RUNTIME<br></label>
                   <span id="etime"></span><br>
                </div>
                <div class="box">
@@ -511,9 +531,9 @@
             <!-- Row 7 -->
             <div class="mygrid">
                <div class="box">
-                  <label><br>SAMPLE INTERVAL</label>
-                  <input type="text", id="interval", name="isnumber", min="2", max="900", onchange="dataChangeFunction(this)">
-                  <label>(SECONDS)</label>
+                  <label><br>SAMPLE INTERVAL<br></label>
+                  <input type="text", id="record", name="isnumber", min="2", max="900", onchange="dataChangeFunction(this)">
+                  <label><br>(SECONDS)</label>
                </div>
             </div>
 

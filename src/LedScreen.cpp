@@ -2,6 +2,8 @@
 //
 #include "LedScreen.h"
 
+#ifdef LED_SCREEN   
+
 extern CLedScreen LedScreen;
 
 QwiicTransparentOLED myOLED;
@@ -19,14 +21,13 @@ CLedScreen::CLedScreen(void)
 
 //-------------------------------------------------------------------
 //
-void CLedScreen::Init(void)
+boolean CLedScreen::Init(void)
 {
-#ifdef LED_SCREEN   
    // Start the OLED display.  
    if (!myOLED.begin(Wire, 0x3d))
    {
       Serial.println("OLED - Device begin failed");
-      while(1);
+      return false;
    }
    myOLED.rectangleFill(1, 1, myOLED.getWidth()-1, myOLED.getHeight()-1);
    myOLED.display();
@@ -35,7 +36,8 @@ void CLedScreen::Init(void)
    myOLED.setFont(&QW_FONT_8X16);
    
 //   DisplayPage();
-#endif
+
+   return true;
 }
 
 //-------------------------------------------------------------------
@@ -93,4 +95,6 @@ void CLedScreen::CopyLine(uint16_t line, String text)
         mPage[line] = text;
     }
 }
+
+#endif      // LED_SCREEN
 

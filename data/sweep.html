@@ -122,6 +122,7 @@
          const SENSOR_3_TEMP_UNIT   =  "t3unit"
 
          const SAMPLE_INTERVAL      =  "interval"
+         const RECORD_INTERVAL      =  "record"
 
          // Buttons.
          //
@@ -263,6 +264,8 @@
                document.getElementById(SENSOR_3_PRESS).innerHTML        = obj.press3;
                document.getElementById(SENSOR_3_PRESS_UNIT).innerHTML   = obj.p3unit;
 
+               document.getElementById(RECORD_INTERVAL).innerHTML       = obj.record;
+
             }, false);
 
             //-------------------------------------------------------------------
@@ -280,7 +283,7 @@
 //                  console.log(index);
 //                  console.log(obj[index]);
                   var line = JSON.parse(obj[index]);
-//                  console.log(line);
+                  console.log(line);
                   if (line.index == B_SWEEP_CONTROL || line.index == B_LIN_EXP)
                   {
                      document.getElementById(line.entry).innerHTML = line.text;
@@ -314,6 +317,7 @@
                   document.getElementById(SWEEP_DEPTH).value               = obj.swdepth;
                   document.getElementById(SWEEP_PREAMBLE).value            = obj.swpre;
                   document.getElementById(SWEEP_TIME_MINS).value           = obj.swtime;
+                  document.getElementById(RECORD_INTERVAL).value           = obj.record;
 
                   document.getElementById(SENSOR_1_PRESS).innerHTML        = obj.press1;
                   document.getElementById(SENSOR_1_PRESS_UNIT).innerHTML   = obj.p1unit;
@@ -368,11 +372,11 @@
                </div>
                <div class="box">
                   <label><br>START PERIOD (MINS)<br></label>
-                  <input type="text", id="swstart", name="isnumber", min="1", max="50", onchange="dataChangeFunction(this)">
+                  <input type="text", id="swstart", name="isnumber", min="1", max="100", onchange="dataChangeFunction(this)">
                </div>
                <div class="box">
                   <label><br>FINISH PERIOD (MINS)<br></label>
-                  <input type="text", id="swstop", name="isnumber", min="2", max="50", onchange="dataChangeFunction(this)">
+                  <input type="text", id="swstop", name="isnumber", min="2", max="100", onchange="dataChangeFunction(this)">
                </div>
             </div>
 
@@ -431,7 +435,16 @@
                </div>
             </div>
 
-            <!-- Row 7 -->
+            <!-- Row 5 -->
+            <div class="mygrid">
+               <div class="box">
+                  <label><br>RECORD INTERVAL<br></label>
+                  <input type="text", id="record", name="isnumber", min="2", max="900", onchange="dataChangeFunction(this)">
+                  <label><br>(SECONDS)</label>
+               </div>
+            </div>
+
+            <!-- Row 6 -->
             <div class="company">
                <div>
                   <label>Kremford Pty Ltd</label>

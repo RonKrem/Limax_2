@@ -280,7 +280,7 @@
 //                  console.log(index);
 //                  console.log(obj[index]);
                   var line = JSON.parse(obj[index]);
-//                  console.log(line);
+                  console.log(line);
                   if (line.index == B_DYNAMIC_DEPTH || line.index == B_BRAKE_OVERIDE || line.index == B_DIRECTION)
                   {
                      document.getElementById(line.entry).innerHTML = line.text;
@@ -348,13 +348,13 @@
             <!-- Row 1 -->
             <div class="mygrid">
                <div class="column">
-                  <label>MOTOR CONTROLLER SETTINGS</label>
+                  <label><br>MOTOR CONTROLLER SETTINGS</label>
                </div>
                <div class="column">
-                  <label>LIMAX SETTINGS</label>
+                  <label><br>LIMAX SETTINGS</label>
                </div>
                <div class="column">
-                  <label>WINCH SETTINGS</label>
+                  <label><br>WINCH SETTINGS</label>
                </div>
             </div>
 
@@ -369,7 +369,7 @@
                      <span id="temp"></span><label> C</label><br>
                </div>
                <div class="box">
-                     <label>DRIVE DIAMETER<br></label>
+                     <label>DRIVE DIAMETER (MM)<br></label>
                      <input type="text", id="drivedia", name="isnumber", min="1", max="50", onchange="dataChangeFunction(this)">
                </div>
             </div>

@@ -38,13 +38,13 @@ enum  // index for numeric database
 
    // Missing numbers now in HDIndex
    
-   DB_SAMPLE_INTERVAL,        // 15
+   DB_RECORD_INTERVAL,        // 15
 
    DB_ACCEL_POWER,            // 16
    DB_DECEL_POWER,            // 17
    DB_RUN_POWER,              // 18
    DB_STOP_POWER,             // 19
-   DB_DRUM_DIA,               // 20
+   DB_DRUM_DIA_MM,            // 20
    DB_DRIVE_RATIO,            // 21
    
    DB_CONTROLLER_TEMP,        // 22
@@ -55,7 +55,8 @@ enum  // index for numeric database
    DB_SWEEP_DEPTH,            // 27
    DB_SWEEP_PREAMBLE,         // 28
    DB_SWEEP_RUNTIME_MINS,     // 29
-
+   
+   DB_PLOT_INTERVAL,          // 30  
 } DBIndex;
 
 enum
@@ -101,6 +102,8 @@ class CData
 public:
    CData(void);
 
+   void Init(void);
+   
    void RestoreSavedValues(void);
 
    DataEntry GetDataEntry(const uint32_t index);
@@ -128,12 +131,12 @@ private:
 
    void Update(DataEntry* p, const AsyncWebParameter* q);
 
-   boolean ActionDataParameter(int index);
+   boolean ActionDataParameter(String directory, int index);
 
    String CreateFileName(DataEntry* p);
 
 private:
    String         mOldValue;
-   uint32_t       mSampleInterval;  // interval between reading samples
 
 };
+

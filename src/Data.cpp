@@ -8,6 +8,7 @@
 #include "MotorControl.h"
 #include "SensorData.h"
 #include "ManageSamples.h"
+#include "Timers.h"
 
 //#define  PRINT_DATA
 #ifdef PRINT_DATA
@@ -25,6 +26,7 @@ extern CEspNow EspNow;
 extern CSensors Sensors;
 extern CMotor Motor;
 extern CMotorControl MotorControl;
+extern CTimers Timers;
 
 extern DynamicData Temp;
 
@@ -36,34 +38,36 @@ extern DynamicData Temp;
 DataEntry DB[] = 
 {
    {"p1_mins",    "10",    true},               //  DB_PERIOD1_MINS,        
-   {"p1_cms",     "1",     true},               //  DB_PERIOD1_CMS,         
-   {"p1_degs",    "0",     true},               //  DB_PERIOD1_DEGS,        
-   {"p2_mins",    "35",    true},               //  DB_PERIOD2_MINS,        
-   {"p2_cms",     "1",     true},               //  DB_PERIOD2_CMS,         
+   {"p1_cms",     "4",     true},               //  DB_PERIOD1_CMS,         
+   {"p1_degs",    "0",     true},               //  DB_PERIOD1_DEGS,    Always zero now    
+   {"p2_mins",    "20",    true},               //  DB_PERIOD2_MINS,        
+   {"p2_cms",     "2",     true},               //  DB_PERIOD2_CMS,         
    {"p2_degs",    "0",     true},               //  DB_PERIOD2_DEGS,        
-   {"p3_mins",    "32",    true},               //  DB_PERIOD3_MINS,        
+   {"p3_mins",    "30",    true},               //  DB_PERIOD3_MINS,        
    {"p3_cms",     "1",     true},               //  DB_PERIOD3_CMS,         
-   {"p3_degs",    "0",    true},                //  DB_PERIOD3_DEGS,        
+   {"p3_degs",    "-90",   true},               //  DB_PERIOD3_DEGS,        
 
    {"rt_mins",    "120",   true},               //  DB_SINE_RUNTIME_MINS,   
-   {"deepness",   "3.5",   true},               //  DB_DEPTH_MS,           
+   {"deepness",   "3",     true},               //  DB_DEPTH_MS,           
 
-   {"interval",   "5",    true},                //  DB_SAMPLE_INTERVAL,     
+   {"record",     "10",    true},               //  DB_RECORD_INTERVAL,     
    {"accelpwr",   "10",    true},               //  DB_ACCEL_POWER,         
    {"decelpwr",   "10",    true},               //  DB_DECEL_POWER,         
    {"runpwr",     "10",    true},               //  DB_RUN_POWER,           
    {"stoppwr",    "5",     true},               //  DB_STOP_POWER,          
-   {"drivedia",   "47.74", true},               //  DB_DRUM_DIA,            
+   {"drivedia",   "56.0",  true},               //  DB_DRUM_DIA_MM,            
    {"drvratio",   "2.6",   true},               //  DB_DRIVE_RATIO,         
    
    {"temp",       "0",     false},              //  DB_CONTROLLER_TEMP,     
    {"rpm",        "0",     false},              //  DB_MOTOR_LIFT_RPM,      
-   {"etime",      "0",     false},              //  DB_TEST_ELASED_TIME,    
+   {"etime",      "0",     false},              //  DB_TEST_ELAPSED_TIME,    
    {"swstart",    "15",    true},               //  DB_SWEEP_START,         
    {"swstop",     "30",    true},               //  DB_SWEEP_STOP,          
    {"swdepth",    "3",     true},               //  DB_SWEEP_DEPTH,         
    {"swpre",      "1",     true},               //  DB_SWEEP_PREAMBLE,      
    {"swtime",     "15",    true},               //  DB_SWEEP_RUNTIME_MINS,  
+
+   {"plot",       "10",    true},               //  DB_PLOT_INTERVAL
 };
 int DB_Entries = sizeof(DB) / sizeof(DataEntry);
 
@@ -88,6 +92,22 @@ int HD_Entries = sizeof(HD) / sizeof(DataEntry);
 CData::CData(void)
 {
    mOldValue = "0";
+}
+
+//-------------------------------------------------------------------
+//
+void CData::Init(void)
+{
+   // uint32_t t;
+
+   // // Initialise the two sample intervals.
+   // //
+   // t = DB[DB_PLOT_INTERVAL].HtmlValue.toInt();    // interval in seconds
+   // Serial.printf("Plot %d  ", t);
+   // Timers.SetPlotInterval(t);    // interval in seconds
+   // t = DB[DB_RECORD_INTERVAL].HtmlValue.toInt();    // interval in seconds
+   Timers.SetRecordInterval(DB[DB_RECORD_INTERVAL].HtmlValue.toInt());    // interval in seconds
+   // Serial.printf("record %d\n", t);
 }
 
 //-------------------------------------------------------------------
@@ -337,7 +357,7 @@ void CData::MatchAndUpdateData(String &name, String &newValue)
          // Regardless of whether the database should be updated, here
          // we call ActionDataParameter.
          //
-         if (ActionDataParameter(i))
+         if (ActionDataParameter(directory, i))
          {
             // Only update Eprom if ActionDataParameter returns true.
             //
@@ -353,9 +373,11 @@ void CData::MatchAndUpdateData(String &name, String &newValue)
 // corresponding DB ands Eprom value has been either validated or updated and the 
 // DB[index].Update boolean will reflect which one.
 //
-boolean CData::ActionDataParameter(int index)
+boolean CData::ActionDataParameter(String directory, int index)
 {
    String jsonString;
+   float temp;
+   float plot, record;
 
    Serial.printf("ActionDataParameter %d: %s = %s\n", index, DB[index].JsonValue, DB[index].HtmlValue.c_str());
 
@@ -379,11 +401,43 @@ boolean CData::ActionDataParameter(int index)
          case DB_PERIOD3_DEGS:
          case DB_SINE_RUNTIME_MINS:
          case DB_DEPTH_MS:
+         case DB_SWEEP_START:
+         case DB_SWEEP_STOP:
+         case DB_SWEEP_DEPTH:
+         case DB_SWEEP_PREAMBLE:
+         case DB_SWEEP_RUNTIME_MINS:
+         break;
+
+         // The plot and record intevals are independent, but must always
+         // be at least 2 apart. Any closer and the plot is made the same
+         // as the record.
+         //
+         case DB_PLOT_INTERVAL:
             break;
 
-         case DB_SAMPLE_INTERVAL:  // blank4Value
-            mSampleInterval = DB[index].HtmlValue.toInt() * 1000;    // interval in mSecs
-            Flag.UpdateIntervalTimer = true;
+         case DB_RECORD_INTERVAL:
+            // plot = DB[DB_PLOT_INTERVAL].HtmlValue.toInt();         // interval in seconds
+            // record = DB[DB_RECORD_INTERVAL].HtmlValue.toInt();     // interval in seconds
+            // if (fabs(plot - record) < 2)
+            // {
+            //    DB[DB_PLOT_INTERVAL].HtmlValue = DB[DB_RECORD_INTERVAL].HtmlValue;
+            //    Eprom.WriteFile(directory, DB[DB_PLOT_INTERVAL].HtmlValue);
+               
+            //    Timers.SetPlotInterval(DB[DB_PLOT_INTERVAL].HtmlValue.toInt());    // interval in seconds
+
+            //    if (index == DB_PLOT_INTERVAL) return false;
+            // }
+
+            // if (index == DB_RECORD_INTERVAL)
+            // {
+            //    Timers.SetRecordInterval(DB[DB_RECORD_INTERVAL].HtmlValue.toInt());    // interval in seconds
+            // }
+            // else
+            // {
+            //    Timers.SetPlotInterval(DB[DB_PLOT_INTERVAL].HtmlValue.toInt());    // interval in seconds
+            // }
+
+            Timers.SetRecordInterval(DB[DB_RECORD_INTERVAL].HtmlValue.toInt());    // interval in seconds
             break;
 
          case DB_CONTROLLER_TEMP:
@@ -397,6 +451,7 @@ boolean CData::ActionDataParameter(int index)
 
          default:
             Serial.println("NO MATCH.");
+            return false;
             break;
       }
    }
@@ -497,8 +552,8 @@ void CData::Update(DataEntry* p, const AsyncWebParameter* q)
 
    directoryName = CreateFileName(p);
 
-   P_DATA(Serial.printf("%s  %s\n", p->value().c_str(), Spiff.ReadFile(SPIFFS, p->PathName)));
-   P_DATA(Serial.printf("%s\n", p->name().c_str()));
+//   P_DATA(Serial.printf("%s  %s\n", p->value().c_str(), Spiff.ReadFile(SPIFFS, p->PathName)));
+//   P_DATA(Serial.printf("%s\n", p->name().c_str()));
 
    // Check if this value differs from the database. Update any entry that
    // has changed for subsequent updates to the controller.

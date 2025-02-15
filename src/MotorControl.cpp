@@ -1,4 +1,17 @@
-// Motor drive
+/*****************************************************************************
+
+ NAME:         MotorControl.cpp
+
+ DESCRIPTION:  Provides the Limax control interface to the Powerstep01 
+               command set.
+
+
+ AUTHOR:       Ron Kreymborg
+               Kremford Pty Ltd
+
+ REVISIONS:
+
+******************************************************************************/
 //
 #include "MotorControl.h"
 #include "Data.h"
@@ -11,14 +24,12 @@
 
 #define  QUICKLOOK_STEP_SIZE     300
 
-//#define  DEBUG_MTR_CNTRL
+#define  DEBUG_MTR_CNTRL
 #ifdef DEBUG_MTR_CNTRL
-#define  P_MTRCTRL(x)   x;
+#define  P_MCTRL(x)   x;
 #else
-#define  P_MTRCTRL(x)   // x
+#define  P_MCTRL(x)   // x
 #endif
-
-//extern void StartIntervalTimer(IntervalTimerType type, uint32_t delaymSecs);
 
 extern CData Data;
 extern CMotor Motor;
@@ -34,9 +45,11 @@ extern xQueueHandle xStepQueue;
 
 extern AsyncEventSource events;
 //extern void StartStepTimer(StepTimerType type, uint32_t delayMSecs);
-extern uint32_t QuickLookStep;
+//extern uint32_t QuickLookStep;
 extern uint32_t QuickLookTicks;
 extern void NotifyClients(String state);
+
+JSONVar jSonPlots;
 
 
 
@@ -46,10 +59,10 @@ CMotorControl::CMotorControl()
 {
    mBoundariesDefined = false;
    mTemperature = 22.3;
-   mPhaseScale = (PI * 2.0 / 360.0);
    mSteps = 0;
+   mAnalysisSteps = 0;
    mSlugDepth = 0;
-   mOneDrumTurnInCms = 0;
+   mSpeedMultiplier = 0;
    mPrevious = 0;
    if ((mSlugMutex = xSemaphoreCreateMutex()) == NULL)
    {
@@ -59,8 +72,13 @@ CMotorControl::CMotorControl()
 
 //-------------------------------------------------------------------
 //
-void CMotorControl::Init(void)
+boolean CMotorControl::Init(void)
 {
+   CMotorControl* instance = static_cast<CMotorControl*>(this);
+
+   mSpeedMultiplier = PI * Data.GetDataEntryNumericValue(DB_DRUM_DIA_MM) / Data.GetDataEntryNumericValue(DB_DRIVE_RATIO);
+   P_MCTRL(Serial.printf("mSpeedMultiplier %f\n", mSpeedMultiplier));
+
    // Must be able to create the queue for incoming EspNow messages.
    //
    if (xStepQueue = xQueueCreate(3, sizeof(RXQuePacket)))
@@ -76,8 +94,58 @@ void CMotorControl::Init(void)
                                     0) != pdPASS)
       {
          Serial.println("Cannot create task Task_ProcessReceivedPacket");
+         return false;
       }
    }
+   
+   // This timer is setup to be one-shot that will delay for the given time. 
+   // The intent is to provide a timed gap between the profile display events.
+   //
+   mProfileTimerState = PROFILE_NOTHING;    // reset
+   if (instance->xProfileIntervalTimer = xTimerCreate("ProTimer", pdMS_TO_TICKS(PROFILE_INTERVAL_TIME), pdTRUE, (void*)0, instance->TimerDone))
+   {
+      return true;
+   }
+
+   return false;
+}
+
+//-------------------------------------------------------------------
+void CMotorControl::ComputeParameters(void)
+{
+   mSpeedMultiplier = PI * Data.GetDataEntryNumericValue(DB_DRUM_DIA_MM) / Data.GetDataEntryNumericValue(DB_DRIVE_RATIO);
+   mParkingSpeedRPS = 1000.0 * PARKING_SPEED_MPM / 60.0 / mSpeedMultiplier;
+   mParkingIncrement = mParkingSpeedRPS * 60 / 1000;
+   Serial.printf("mSpeedMultiplier= %f, mParkingSpeedRPS= %f, mParkingIncrement= %f\n", mSpeedMultiplier, mParkingSpeedRPS, mParkingIncrement);
+   mSlugDepth = 0;
+   Flag.ReturnToZero = false;
+   mTestSeconds = 0;
+}
+
+//-------------------------------------------------------------------
+// Set normal accel/decel. Will not work if motor is running.
+//
+void CMotorControl::SetNormalAccelRate(void)
+{
+   Motor.SetAccelRate(NORMAL_ACCEL_RATE);
+   Motor.SetDecelRate(NORMAL_ACCEL_RATE);
+}
+
+//-------------------------------------------------------------------
+// Set slow accel/decel. Will not work if motor is running.
+//
+void CMotorControl::SetSlowAccelRate(void)
+{
+   Motor.SetAccelRate(SLOW_ACCEL_RATE);
+   Motor.SetDecelRate(SLOW_ACCEL_RATE);
+}
+
+//-------------------------------------------------------------------
+// Return the actual elapsed test seconds.
+//
+uint32_t CMotorControl::GetElapsedSeconds(void)
+{
+   return mTestSeconds - mSubStart;
 }
 
 //-------------------------------------------------------------------
@@ -101,8 +169,7 @@ void CMotorControl::Task_ProcessStepTimer(void* parameter)
       {
          MotorControl.ManageSineTest();
       }
-
-      if (Flag.SweepTestRunning)
+      else if (Flag.SweepTestRunning)
       {
          MotorControl.ManageSweepTest();
       }
@@ -117,8 +184,8 @@ void CMotorControl::PutSlugDepth(float position)
 {
    xSemaphoreTake(mSlugMutex, portMAX_DELAY);
    mSlugDepth = position;
-   Serial.printf("PutSlugDepth: %f\n", mSlugDepth);
    xSemaphoreGive(mSlugMutex);
+//   P_MCTRL(Serial.printf("PutSlugDepth: %f\n", mSlugDepth));
 }
 
 //-------------------------------------------------------------------
@@ -129,90 +196,158 @@ float CMotorControl::GetSlugDepth(void) const
 
    xSemaphoreTake(mSlugMutex, portMAX_DELAY);
    value = mSlugDepth;
-//   Serial.printf(" SlugDepth = %f\n", value);
    xSemaphoreGive(mSlugMutex);
+   P_MCTRL(Serial.printf(" SlugDepth = %f\n", value));
 
    return value;
+}
+
+//-----------------------------------------------------------------------------
+// Call this function to initiate a profile plot.
+// 
+void CMotorControl::BeginProfileTimer(void)
+{
+   xTimerChangePeriod(xProfileIntervalTimer, PROFILE_INTERVAL_TIME, 0);
+   mProfileTimerState = PROFILE_EVENT;
+   P_MCTRL(Serial.println("MotorControl: BeginProfileTimer"));
+}
+
+//-----------------------------------------------------------------------------
+// We arrive here after the simulated sensor response timeout.
+//
+void CMotorControl::TimerDone(xTimerHandle pxTimer)
+{
+   switch (MotorControl.GetProfileTimerState())
+   {
+         break;
+
+      case PROFILE_EVENT:
+         // Ready to send the next profile position.
+         //
+Serial.println("PROFILE_EVENT");
+         MotorControl.DisplaySineProfile();
+         break;
+
+      case PROFILE_NOTHING:
+      default:
+         break;
+   }
+}
+
+//-------------------------------------------------------------------
+//
+void CMotorControl::StartProfileTimer(void)
+{
+   P_MCTRL(Serial.println("MotorControl.StartProfileTimer"));
+
+   DefineTestBoundaries(  DB_SINE_RUNTIME_MINS, 
+                          Buttons.GetBooleanState(B_SINE2_ENABLE), 
+                          Buttons.GetBooleanState(B_SINE3_ENABLE) );
+   
+   // Profile events occur every PROFILE_INTERVAL_TIME milliseconds. This interval
+   // is less than the resolution of an uint32_t, so the mProfileElapsedTime
+   // is in milleseconds.
+   //
+   mProfileElapsedTime = mSubStart;
+   mMaxProfileTime = (uint32_t)Data.GetDataEntryNumericValue(DB_SINE_RUNTIME_MINS) * 60 + mProfileElapsedTime;
+   P_MCTRL(Serial.printf("mProfileElapsedTime %d  mMaxProfileTime %d\n", mProfileElapsedTime, mMaxProfileTime));
+   mProfileTimerState = PROFILE_NOTHING;    // reset
+
+   BeginProfileTimer();
 }
 
 //-------------------------------------------------------------------
 //
 void CMotorControl::DisplaySineProfile(void)
 {
-   float depth, difference, revsPerSec;
    boolean sine2, sine3;
+   uint32_t seconds;
+   float depth;
    String jsonString;
-   JSONVar values;
-   char text[20];
+   char text[50];
 
-   P_MTRCTRL(Serial.println("MotorControl.DisplaySineProfile"));
+   P_MCTRL(Serial.println("MotorControl.DisplaySineProfile"));
+
+   // Compute the current slug depth.
+   //
    sine2 = Buttons.GetBooleanState(B_SINE2_ENABLE);
    sine3 = Buttons.GetBooleanState(B_SINE3_ENABLE);
+   seconds = mProfileElapsedTime;
+   mDepth = (NewSum(seconds, sine2, sine3) - mMax) * mScale;
+//   Serial.printf("seconds %d  depth %f\n", seconds, mDepth);   
 
-   // Compute the current slug depth.
-   //
-   mDepth = (NewSum(QuickLookStep, sine2, sine3) - mMax) * mScale;
-
+   sprintf(text, "%s", SecondsToTime(seconds).c_str());
+   jSonPlots["time"] = String(text);
    sprintf(text, "%.5f", mDepth);
-   values["slug"] = String(text);
-   values["time"] = SecondsToTime(QuickLookStep - GetSubStartValue());
-
-   jsonString = JSON.stringify(values);
+//   Serial.printf("<%s>\n", text);
+   jSonPlots["slug"] = String(text);
+   jsonString = JSON.stringify(jSonPlots);
+//   Serial.println(jsonString);
    events.send(jsonString.c_str(), "new_readings", millis());
 
-   // Move the QuickLookStep value to the next value within the 
-   // chosen period.
-   //
-   QuickLookStep += ((int)Data.GetDataEntryNumericValue(DB_SINE_RUNTIME_MINS) * 60) / QUICKLOOK_STEP_SIZE;
+   mProfileElapsedTime++; // += PROFILE_INTERVAL_TIME;
+//   Serial.println(mProfileElapsedTime);
 
-   if (QuickLookStep > GetSubEndValue())
+   if (mProfileElapsedTime > mMaxProfileTime)
    {
-      Flag.DoSineQuicklook = false;
-
-      jsonString = "0";
-      Buttons.SetButtonState(B_SINE_QUICKLOOK, jsonString);
-      NotifyClients(Buttons.GetButtonStates());
+      mProfileTimerState = PROFILE_NOTHING;    // reset
+      xTimerStop(xProfileIntervalTimer, 0);
+      Buttons.SetButtonState(B_SINE_QUICKLOOK, "0");     // turn button off
+      Buttons.ButtonOff(B_SINE_QUICKLOOK);
    }
+
+   // // Move the QuickLookStep value to the next value within the 
+   // // chosen period.
+   // //
+   // QuickLookStep += ((int)Data.GetDataEntryNumericValue(DB_SINE_RUNTIME_MINS) * 60) / QUICKLOOK_STEP_SIZE;
+
+   // if (QuickLookStep > GetSubEndValue())
+   // {
+   //    Flag.DoSineQuicklook = false;
+
+   //    Buttons.SetButtonState(B_SINE_QUICKLOOK, "0");     // turn button off
+   //    Buttons.ButtonOff(B_SINE_QUICKLOOK);
+   // }
 }
 
-//-------------------------------------------------------------------
-//
-void CMotorControl::DisplaySweepProfile(void)
-{
-   float depth, difference, revsPerSec;
-   String jsonString;
-   JSONVar values;
-   char text[20];
+// //-------------------------------------------------------------------
+// //
+// void CMotorControl::DisplaySweepProfile(void)
+// {
+//    float depth, difference, revsPerSec;
+//    String jsonString;
+//    JSONVar values;
+//    char text[20];
 
-   P_MTRCTRL(Serial.println("MotorControl.DisplaySweepProfile"));
+//    P_MCTRL(Serial.println("MotorControl.DisplaySweepProfile"));
 
-   // Compute the current slug depth.
-   //
-   mDepth = cos(2.0 * PI * QuickLookStep * (mR * QuickLookStep / 2.0 + mf0));
-   mDepth = mDepth / 2.0 - 0.5;    // translate to negative
-   mDepth *= Data.GetDataEntryNumericValue(DB_SWEEP_DEPTH);
+//    // Compute the current slug depth.
+//    //
+//    mDepth = cos(2.0 * PI * QuickLookStep * (mR * QuickLookStep / 2.0 + mf0));
+//    mDepth = mDepth / 2.0 - 0.5;    // translate to negative
+//    mDepth *= Data.GetDataEntryNumericValue(DB_SWEEP_DEPTH);
 
-   sprintf(text, "%.5f", mDepth);
-   values["slug"] = String(text);
-   values["time"] = SecondsToTime(QuickLookStep - GetSubStartValue());
+//    sprintf(text, "%.5f", mDepth);
+//    values["slug"] = String(text);
+//    values["time"] = SecondsToTime(QuickLookStep - GetSubStartValue());
 
-   jsonString = JSON.stringify(values);
-   events.send(jsonString.c_str(), "new_readings", millis());
+//    jsonString = JSON.stringify(values);
+//    events.send(jsonString.c_str(), "new_readings", millis());
 
-   // Move the QuickLookStep value to the next value within the 
-   // chosen period.
-   //
-   QuickLookStep += ((int)Data.GetDataEntryNumericValue(DB_SWEEP_RUNTIME_MINS) * 60) / QUICKLOOK_STEP_SIZE;
+//    // Move the QuickLookStep value to the next value within the 
+//    // chosen period.
+//    //
+//    QuickLookStep += ((int)Data.GetDataEntryNumericValue(DB_SWEEP_RUNTIME_MINS) * 60) / QUICKLOOK_STEP_SIZE;
 
-   if (QuickLookStep > GetSubEndValue())
-   {
-      Flag.DoSweepQuicklook = false;
+//    if (QuickLookStep > GetSubEndValue())
+//    {
+//       Flag.DoSweepQuicklook = false;
 
-      jsonString = "0";
-      Buttons.SetButtonState(B_SWEEP_QUICKLOOK, jsonString);
-      NotifyClients(Buttons.GetButtonStates());
-   }
-}
+//       jsonString = "0";
+//       Buttons.SetButtonState(B_SWEEP_QUICKLOOK, jsonString);
+//       NotifyClients(Buttons.GetButtonStates());
+//    }
+// }
 
 //-------------------------------------------------------------------
 //
@@ -226,7 +361,7 @@ String CMotorControl::SecondsToTime(uint32_t seconds)
    minutes = (seconds - 3600 * hours) / 60;
    secs = seconds % 60;
    sprintf(text, "%d:%02d:%02d", hours, minutes, seconds % 60);
-//   Serial.printf("%d  %d %d %d  %s\n", seconds,  hours, minutes, secs, text);
+//   P_MCTRLSerial.printf("%d  %d %d %d  %s\n", seconds,  hours, minutes, secs, text));
    time = String(text);
    return time;
 }
@@ -239,54 +374,99 @@ void CMotorControl::ManageSineTest(void)
    // The SineTestRunning flag is set. Check if the test elapsed time
    // has finished.
    //
-   Serial.println("ManageSineTest");
-         //
-         //+++++++++ PROBABLY NEED TO CHANGE HOW THE TEST TIME SYSTEM WORKS
-         //
-   if (Timers.GetTestElapsedSeconds() > (int)Data.GetDataEntryNumericValue(DB_SINE_RUNTIME_MINS) * 60)
+   P_MCTRL(Serial.println("ManageSineTest"));
+
+   if (Flag.ReturnToZero)
    {
-      Serial.println("StopSineTest");
+      DoParking();
+   }
+   else if (mTestSeconds > (int)Data.GetDataEntryNumericValue(DB_SINE_RUNTIME_MINS) * 60)
+   {
+      P_MCTRL(Serial.println("StopSineTest"));
 
-      StopTest();
+      Flag.Recording = false;    // stop recording
 
-      // Turn the run button off.
-      //
-      Serial.println("B_TEST_CONTROL cleared");
-      Buttons.SetButtonState(B_TEST_CONTROL, "0");     // turn button off
-      NotifyClients(Buttons.GetButtonStates());
+      DoParking();
    }
    else
    {
       // We arrive here every second while the SineTestRunning flag is set 
       // and the test time has not concluded. Because the test parameters 
       // may have changed the test boundaries must be redefined for every case. 
-      //
+      ////
       if (MotorControl.AreBoundariesDefined() == false)
       {
-         JSONVar values;
-         String jsonString;
-         char text[20];
-
          // Test boundaries must be re-defined.
          //
-         Serial.println("Defining boundaries");
+         P_MCTRL(Serial.println("Defining boundaries"));
          MotorControl.DefineTestBoundaries(  DB_SINE_RUNTIME_MINS, 
                                              Buttons.GetBooleanState(B_SINE2_ENABLE), 
                                              Buttons.GetBooleanState(B_SINE3_ENABLE) );
                   
          vTaskDelay(1);
 
-         // Time starts from now.
-         //
-         Timers.ClearSecondsTimer();
+         // The mTestSeconds varuable contains the current elapsed test seconds offset
+         // by the computed correct start position computed by DefineTestBoaundaries.
+         // 
+         mTestSeconds = mSubStart;
       }
 
       // Compute a new slug depth every second.
       //
+      MotorControl.ComputeSineDepth();
+   }
+}
+
+//-----------------------------------------------------------------------------
+// While ever the Flag.SweepTestRunning is set, the 1 second timer will call 
+// this method. Here we first check the elapsed time against the user setting,
+// and if exceeded, stop the test. 
+//
+void CMotorControl::ManageSweepTest(void)
+{
+   float revsPerSec;
+   static float working;
+
+   // The SweepTestRunning flag is still set. Check if the sweep test elapsed
+   // time has finished.
+   //
+   Serial.println("ManageSweepTest");
+   if (Flag.ReturnToZero)
+   {
+      DoParking();
+   }
+   else if (mTestSeconds > (int)Data.GetDataEntryNumericValue(DB_SWEEP_RUNTIME_MINS) * 60)
+   {
+      P_MCTRL(Serial.println("StopSweepTest"));
+
+      Flag.Recording = false;    // stop recording
+
+      DoParking();
+   }
+   else
+   {
+      // We arrive here every second while ever the SweepTestRunning button is
+      // set and the test time has not concluded. The test boundaries must be 
+      // redefined if any parameters are redefined. 
+      //
+      if (MotorControl.AreBoundariesDefined() == false)
+      {
+         // Test boundaries must be re-defined.
          //
-         //+++++++++ PROBABLY NEED TO CHANGE HOW THE TEST TIME SYSTEM WORKS
-         //
-      MotorControl.ComputeDepth(Timers.GetTestElapsedSeconds());
+         P_MCTRL(Serial.println("Defining boundaries"));
+         MotorControl.DefineTestBoundaries(DB_SWEEP_RUNTIME_MINS, false, false);
+                  
+         vTaskDelay(1);
+
+         // The mTestSeconds varuable contains the current elapsed test seconds offset
+         // by the computed correct start position computed by DefineTestBoaundaries.
+         // 
+         mTestSeconds = mSubStart;
+      }
+
+      // Compute a new slug depth every second.
+      //
+      MotorControl.ComputeSweepDepth();
    }
 }
 
@@ -307,12 +487,15 @@ void CMotorControl::StopTest(void)
    }
    Flag.SineTestRunning = Flag.SweepTestRunning = false;
 
-   PutSlugDepth(0);     // reset slug depth
+   mPrevious = 0;       // ensure we start from zero
 
-   Timers.StartIntervalTimer(DO_SAMPLE, BACKGROUND_SAMPLE_TIME);
+   // Turn both start buttons off.
+   //
+   Buttons.SetButtonState(B_SWEEP_CONTROL, "0");     // turn button off
+   Buttons.ButtonOff(B_SWEEP_CONTROL);
 
-   Serial.println("StopTest");
-   Timers.ClearSecondsTimer();
+   Buttons.SetButtonState(B_TEST_CONTROL, "0");     // turn button off
+   Buttons.ButtonOff(B_TEST_CONTROL);
 
    // Now undefine the test parameters.
    //
@@ -320,34 +503,67 @@ void CMotorControl::StopTest(void)
 }
 
 //-----------------------------------------------------------------------------
+//
+void CMotorControl::DoParking(void)
+{
+   float revsPerSec;
+
+   if (Flag.ReturnToZero == false)
+   {
+      Flag.ReturnToZero = true;
+      revsPerSec = mParkingSpeedRPS;
+      Flag.MotorRunning = true;
+      Motor.RunMotorAtRevsPerSec(revsPerSec);
+      Motor.EnergiseBrake();
+   }
+   else if (mSlugDepth < -PARK_SHUTDOWN_DISTANCE)
+   {
+      P_MCTRL(Serial.printf("mSlugDepth %f\n", mSlugDepth)); 
+      mSlugDepth += mParkingIncrement;
+   }
+   else
+   {
+      mSlugDepth = 0;
+      mPrevious = 0;
+      StopTest();
+      Flag.ReturnToZero = false;
+   }
+}
+
+//-----------------------------------------------------------------------------
 // This computes the new depth then translates that into the required
 // motor speed.
 //
-void CMotorControl::ComputeDepth(uint32_t seconds)
+void CMotorControl::ComputeSineDepth(void)
 {
-   float depth, difference, revsPerSec;
+   float working, difference, revsPerSec;
    boolean sine2, sine3;
 
-   P_MTRCTRL(Serial.printf("MotorControl.ComputeDepth: %d  %d  %d\n", Flag.DoSineQuicklook, Flag.SineTestRunning, Flag.SweepTestRunning));
+   P_MCTRL(Serial.printf("MotorControl.ComputeSineDepth: %d  %d  %d\n", Flag.DoSineQuicklook, Flag.SineTestRunning, Flag.SweepTestRunning));
 
-   if (Flag.DoSineQuicklook || Flag.SineTestRunning || Flag.SweepTestRunning)
+   if (Flag.SineTestRunning)
    {
       sine2 = Buttons.GetBooleanState(B_SINE2_ENABLE);
       sine3 = Buttons.GetBooleanState(B_SINE3_ENABLE);
 
       // Compute the current slug depth.
       //
-      mDepth = (NewSum(seconds, sine2, sine3) - mMax) * mScale;
+      working = (NewSum(mTestSeconds, sine2, sine3) - mMax) * mScale;
 
-      difference = mPrevious - mDepth;
+      // Compute the difference in millimetres.
+      //
+      difference = (working - mPrevious) * 1000.0;
+      mPrevious = working;
 
-      mPrevious = mDepth;
+      // Convert to revs/sec.
+      //
+      revsPerSec = difference / mSpeedMultiplier;
 
-      revsPerSec = difference / mOneDrumTurnInCms;
+      P_MCTRL(Serial.printf("Secs %d  RPS %f\n", mTestSeconds, revsPerSec));
 
-      P_MTRCTRL(Serial.printf("Depth %f   RPS %f\n", mDepth, revsPerSec));
-
-      if (Flag.SineTestRunning || Flag.SweepTestRunning)
+      // Motor only runs for the active tests.
+      //
+      if (Flag.SineTestRunning)
       {
          // Ensure the motor is flagged as running.
          //
@@ -356,80 +572,18 @@ void CMotorControl::ComputeDepth(uint32_t seconds)
          // Run the motor at the current speed.
          //
          Motor.RunMotorAtRevsPerSec(revsPerSec);
+
          Motor.EnergiseBrake();
       }
-   }
-   else
-   {
-      mDepth = 0;
    }
 
    // Publish the current depth.
    //
-   PutSlugDepth(mDepth);
-}
+   PutSlugDepth(working);
 
-//-----------------------------------------------------------------------------
-// While ever the Flag.SweepTestRunning is set, the 1 second timer will call 
-// this method. Here we first check the elapsed time against the user setting,
-// and if exceeded, stop the test. 
-// The user can change  
-//
-void CMotorControl::ManageSweepTest(void)
-{
-   // The SweepTestRunning flag is still set. Check if the sweep test elapsed
-   // time has finished.
+   // Step elapsed seconds.
    //
-   Serial.println("ManageSweepTest");
-         //
-         //+++++++++ PROBABLY NEED TO CHANGE HOW THE TEST TIME SYSTEM WORKS
-         //
-   if (Timers.GetTestElapsedSeconds() > (int)Data.GetDataEntryNumericValue(DB_SWEEP_RUNTIME_MINS) * 60)
-   {
-      Serial.println("StopSweepTest");
-
-      StopTest();
-
-      // Turn the start button off.
-      //
-      Serial.println("B_SWEEP_CONTROL cleared");
-      Buttons.SetButtonState(B_SWEEP_CONTROL, "0");     // turn button off
-      NotifyClients(Buttons.GetButtonStates());
-   }
-   else
-   {
-      // We arrive here every second while ever the SweepTestRunning button is
-      // set and the test time has not concluded. Because the test parameters 
-      // may have changed the test boundaries must be redefined for every test. 
-      //
-      if (MotorControl.AreBoundariesDefined() == false)
-      {
-         JSONVar values;
-         String jsonString;
-         char text[20];
-
-         // Test boundaries must be re-defined.
-         //
-         Serial.println("Defining boundaries");
-         MotorControl.DefineTestBoundaries(DB_SWEEP_RUNTIME_MINS, false, false);
-                  
-         vTaskDelay(1);
-
-         // Time starts from now.
-         //
-         //+++++++++ PROBABLY NEED TO CHANGE HOW THE TEST TIME SYSTEM WORKS
-         //
-         Timers.GetTestElapsedSeconds();
-//         StartIntervalTimer(DO_SAMPLE, Control.GetSampleInterval_mSecs());
-      }
-
-      // Compute a new slug depth every second.
-      //
-         //
-         //+++++++++ PROBABLY NEED TO CHANGE HOW THE TEST TIME SYSTEM WORKS
-         //
-      MotorControl.SweepState(Timers.GetTestElapsedSeconds());
-   }
+   mTestSeconds++;
 }
 
 //-----------------------------------------------------------------------------
@@ -444,36 +598,48 @@ void CMotorControl::InitSweep(void)
    mTime = Data.GetDataEntryNumericValue(DB_SWEEP_RUNTIME_MINS) * 60.0;
    mR = (mf1 - mf0) / mTime;
    mPrevious = 0;
-   Serial.printf("f0=%f, f1=%f, Time=%f, R=%f\n", mf0, mf1, mTime, mR);
+   P_MCTRL(Serial.printf("f0=%f, f1=%f, Time=%f, R=%f\n", mf0, mf1, mTime, mR));
 }
 
 //-----------------------------------------------------------------------------
 //
-void CMotorControl::SweepState(uint32_t seconds)
+void CMotorControl::ComputeSweepDepth(void)
 {
    float difference;
    float revsPerSec;
+   float working;
 
-   mDepth = cos(2.0 * PI * seconds * (mR * seconds / 2.0 + mf0));
-   mDepth = mDepth / 2.0 - 0.5;    // translate to negative
-   mDepth *= Data.GetDataEntryNumericValue(DB_SWEEP_DEPTH);
+   working = cos(2.0 * PI * mTestSeconds * (mR * mTestSeconds / 2.0 + mf0));
+   working = working / 2.0 - 0.5;    // translate to negative
+   working *= Data.GetDataEntryNumericValue(DB_SWEEP_DEPTH);
 
-   difference = mPrevious - mDepth;
-
-   mPrevious = mDepth;
-
-   revsPerSec = difference / mOneDrumTurnInCms;
-
-   P_MTRCTRL(Serial.printf("Depth %f   RPS %f\n", mDepth, revsPerSec));
-
-   // Ensure the motor is flagged as running.
+   // The difference in millimetres.
    //
-   Flag.MotorRunning = true;
+   difference = (mPrevious - working) * 1000;
+   mPrevious = working;
 
-   Motor.RunMotorAtRevsPerSec(revsPerSec);
-   Motor.EnergiseBrake();
+   revsPerSec = difference / mSpeedMultiplier;
 
-   PutSlugDepth(mDepth);
+   P_MCTRL(Serial.printf("Secs %d  RPS %f\n", mTestSeconds, revsPerSec));
+
+   if (Flag.SweepTestRunning)
+   {
+      // Ensure the motor is flagged as running.
+      //
+      Flag.MotorRunning = true;
+
+      Motor.RunMotorAtRevsPerSec(revsPerSec);
+
+      Motor.EnergiseBrake();
+   }
+
+   // Publish the current depth.
+   //
+   PutSlugDepth(working);
+
+   // Step elapsed seconds.
+   //
+   mTestSeconds++;
 }
 
 //-----------------------------------------------------------------------------
@@ -489,19 +655,18 @@ void CMotorControl::DefineTestBoundaries(uint32_t runtimeIndex, boolean sine2, b
    float current, temp, r;
 //   boolean sine2, sine3;
 
-   P_MTRCTRL(Serial.println("MotorControl:DefineTestBoundaries"));
+   P_MCTRL(Serial.println("MotorControl:DefineTestBoundaries"));
 
-   mSteps = (int)Data.GetDataEntryNumericValue(runtimeIndex) * 60;   // test elapsed time in seconds
-   P_MTRCTRL(Serial.printf("Steps %d\n", mSteps));
+   mSteps = (uint32_t)Data.GetDataEntryNumericValue(runtimeIndex) * 60;   // test elapsed time in seconds
+   mAnalysisSteps = mSteps * 4 + 1;
 
-   // Establish which sines are involved.
-   //
-//   sine2 = Control.GetButtonState(B_SINE2_ENABLE);
-//   sine3 = Control.GetButtonState(B_SINE3_ENABLE);
+   P_MCTRL(Serial.printf("Steps %d  mAnalysisSteps %d\n", mSteps, mAnalysisSteps));
+   mDepth = Data.GetDataEntryNumericValue(DB_DEPTH_MS);
+   P_MCTRL(Serial.printf("Depth %d\n", mDepth));
 
    // Copy the three phase offsets.
    //
-   mPhase1 = (double)Data.GetDataEntryNumericValue(DB_PERIOD1_DEGS);
+   mPhase1 = 0; //(double)Data.GetDataEntryNumericValue(DB_PERIOD1_DEGS);
    if (sine2) mPhase2 = (double)Data.GetDataEntryNumericValue(DB_PERIOD2_DEGS); else mPhase2 = 0;
    if (sine3) mPhase3 = (double)Data.GetDataEntryNumericValue(DB_PERIOD3_DEGS); else mPhase3 = 0;
 
@@ -509,31 +674,27 @@ void CMotorControl::DefineTestBoundaries(uint32_t runtimeIndex, boolean sine2, b
    if (sine2) mAmplitude2 = (double)Data.GetDataEntryNumericValue(DB_PERIOD2_CMS); else mAmplitude2 = 0;
    if (sine3) mAmplitude3 = (double)Data.GetDataEntryNumericValue(DB_PERIOD3_CMS); else mAmplitude3 = 0;
 
-   mAmplitude = (double)Data.GetDataEntryNumericValue(DB_DEPTH_MS);
-   P_MTRCTRL(Serial.printf("Amplitudes %f %f %f %f\n", mAmplitude, mAmplitude1, mAmplitude2, mAmplitude3));
+   mDepth = (double)Data.GetDataEntryNumericValue(DB_DEPTH_MS);
+   P_MCTRL(Serial.printf("Amplitudes %f %f %f %f\n", mDepth, mAmplitude1, mAmplitude2, mAmplitude3));
 
-   // Ensure no phase angle is allowed for sine1 if used alone.
-   //
-   if ( (Buttons.GetBooleanState(B_SINE2_ENABLE) == false) && (Buttons.GetBooleanState(B_SINE3_ENABLE) == false) ) 
-   {
-      mPhase1 = 0.0;
-      Data.PutDataEntryValue(DB_PERIOD1_DEGS, "0");
-   }
+   // // Ensure no phase angle is allowed for sine1 if used alone.
+   // //
+   // if ( (Buttons.GetBooleanState(B_SINE2_ENABLE) == false) && (Buttons.GetBooleanState(B_SINE3_ENABLE) == false) ) 
+   // {
+   //    mPhase1 = 0.0;
+   //    Data.PutDataEntryValue(DB_PERIOD1_DEGS, "0");
+   // }
 
    // Convert the three sine periods from minutes to seconds.
    //
    mPeriod1 = (int)Data.GetDataEntryNumericValue(DB_PERIOD1_MINS) * 60.0;
    if (sine2) mPeriod2 = (int)Data.GetDataEntryNumericValue(DB_PERIOD2_MINS) * 60.0; else mPeriod2 = 0;
    if (sine3) mPeriod3 = (int)Data.GetDataEntryNumericValue(DB_PERIOD3_MINS) * 60.0; else mPeriod3 = 0;
-   P_MTRCTRL(Serial.printf("Periods %f %f %f\n", mPeriod1, mPeriod2, mPeriod3));
+   P_MCTRL(Serial.printf("Periods %f %f %f\n", mPeriod1, mPeriod2, mPeriod3));
 
    // Convert the periods to angular frequency.
    //
-   mAngularFrequency1 = 2.0 * PI / mPeriod1;    // to angular frequency
-   mAngularFrequency2 = 2.0 * PI / mPeriod2;
-   mAngularFrequency3 = 2.0 * PI / mPeriod3;
-   P_MTRCTRL(Serial.printf("Angular freq %f %f %f\n", mAngularFrequency1, mAngularFrequency2, mAngularFrequency3));
-   P_MTRCTRL(Serial.printf("Phases %f %f %f\n", mPhase1, mPhase2, mPhase3));
+   P_MCTRL(Serial.printf("Phases %f %f %f\n", mPhase1, mPhase2, mPhase3));
 
    mMin = 0.0;
    mMax = -1000.0;
@@ -543,7 +704,6 @@ void CMotorControl::DefineTestBoundaries(uint32_t runtimeIndex, boolean sine2, b
    
    j = 0;
    index = 0;
-
    proceed = true;
    while (proceed)
    {
@@ -552,11 +712,14 @@ void CMotorControl::DefineTestBoundaries(uint32_t runtimeIndex, boolean sine2, b
       Serial.println("Cycle ====");
       i = j;
       n = i + mSteps;
-      P_MTRCTRL(Serial.printf("i = %d,  n = %d\n", i, n));
+      P_MCTRL(Serial.printf("i = %d,  n = %d\n", i, n));
+      if (n > mAnalysisSteps)
+      {
+         break;   // enough searching
+      }
       while (i < n)
       {
          current = NewSum(i, sine2, sine3);
-         if (i < 10) Serial.printf("%f\n", current);
          if (current > mMax)
          {
             index = i;
@@ -571,7 +734,7 @@ void CMotorControl::DefineTestBoundaries(uint32_t runtimeIndex, boolean sine2, b
          i++;
       }
 
-      P_MTRCTRL(Serial.printf("index = %d,  mMin = %e, mMax = %e,  oldmMax = %e,  fabs(%e)\n", index, mMin, mMax, oldmMax, fabs(mMax-oldmMax)));
+      P_MCTRL(Serial.printf("index = %d,  mMin = %f, mMax = %f,  current = %f\n", index, mMin, mMax, current));
 
       if (fabs(mMax - oldmMax) < 0.1)
       {
@@ -585,12 +748,13 @@ void CMotorControl::DefineTestBoundaries(uint32_t runtimeIndex, boolean sine2, b
       }
    }
 
+   P_MCTRL(Serial.printf("mMin %f  mMax %f  index %d\n", mMin, mMax, index));
    mSubStart = index;
    mSubEnd = index + mSteps;
-   Serial.printf("mAmplitude = %f, SubStart = %d,  SubEnd = %d\n", mAmplitude, mSubStart, mSubEnd);
+   P_MCTRL(Serial.printf("mDepth = %f, SubStart = %d,  SubEnd = %d,  current = %f\n", mDepth, mSubStart, mSubEnd, current));
 
-   mScale = mAmplitude / (mMax - mMin);
-   Serial.printf("mScale = %f\n", mScale);
+   mScale = mDepth / (mMax - mMin);
+   P_MCTRL(Serial.printf("mScale = %f\n", mScale));
 
    mBoundariesDefined = true;
 }
@@ -619,7 +783,7 @@ boolean CMotorControl::MotorActionParameters(int index)
          Motor.SetStoppedPwr((int)Data.GetDataEntryNumericValue(index));
          break;
 
-      case DB_DRUM_DIA:    // drive roller dia
+      case DB_DRUM_DIA_MM:    // drive roller dia
          break;
 
       case DB_DRIVE_RATIO:    // drive ratio
@@ -666,25 +830,19 @@ float CMotorControl::ComputeSlugPosition(uint32_t index)
 }
 
 //-----------------------------------------------------------------------------
+// This sum uses the algorithm described in the Kremford paper:
+//     The Limax Control Development. 
 //
-float CMotorControl::NewSum(uint32_t index, boolean sine2, boolean sine3)
+float CMotorControl::NewSum(uint32_t seconds, boolean sine2, boolean sine3)
 {
    float temp;
    float cosine1, cosine2, cosine3;
 
-   // Compute a new sum of sines term.
-   //
-      mAngularFrequency1 = 2.0 * PI / 20;    // to angular frequency
-      mAmplitude1 = 20;
-
-   Serial.printf("%f %f %f %f\n", mAngularFrequency1, mPhaseScale, mPhase1, mAmplitude1);
-   cosine1 = cos((mAngularFrequency1 * index) + (mPhaseScale * mPhase1));
-   cosine1 = (cosine1 / 2.0 - 0.5) * mAmplitude1;
+   cosine1 = CoSine(seconds, mPeriod1, mPhase1, mAmplitude1);
 
    if (sine2)
    {
-      cosine2 = cos((mAngularFrequency2 * index) + (mPhaseScale * mPhase2));
-      cosine2 = (cosine2 / 2.0 - 0.5) * mAmplitude2;
+      cosine2 = CoSine(seconds, mPeriod2, mPhase2, mAmplitude2);
    }
    else
    {
@@ -693,15 +851,22 @@ float CMotorControl::NewSum(uint32_t index, boolean sine2, boolean sine3)
 
    if (sine3)
    {
-      cosine3 = cos((mAngularFrequency3 * index) + (mPhaseScale * mPhase3));
-      cosine3 = (cosine3 / 2.0 - 0.5) * mAmplitude3;
+      cosine3 = CoSine(seconds, mPeriod3, mPhase3, mAmplitude3);
    }
    else
    {
       cosine3 = 0.0;
    }
 
-   temp = cosine1 + cosine2 + cosine3;
+   temp = (cosine1 + cosine2 + cosine3);
 
    return temp;
+}
+
+//-----------------------------------------------------------------------------
+// Compute the required sine. 
+//
+float CMotorControl::CoSine(float seconds, float period, float phase, float amplitude) const
+{
+   return cos((2.0 * seconds / period + phase / 180.0) * PI) / 2.0 * amplitude;
 }

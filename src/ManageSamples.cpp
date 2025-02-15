@@ -9,7 +9,7 @@
 #include "Data.h"
 #include "Network.h"
 #include "Timers.h"
-
+#include "LimaxTime.h"
 #include "WellSimulator.h"
 
 //#define  PRINT_SAMPLES
@@ -29,6 +29,7 @@ extern CMotorControl MotorControl;
 extern CNetwork Network;
 extern CData Data;
 extern CTimers Timers;
+extern CLimaxTime LimaxTime;
 
 extern xQueueHandle xNewSampleQueue;
 extern void NotifyClients(String state);
@@ -118,15 +119,11 @@ void CManageSamples::Task_ManageSampleResults(void* parameter)
       // {
       //    Serial.printf("%f\n", SampleSet.SensorData[i].pressure.value);
       // }
-#ifdef SIMULATING
-      slugDepth = WellSimulator.GetSlugDepth();
-#else
       slugDepth = MotorControl.GetSlugDepth();
-#endif 
 
       //-------------------------------------------------------------------------------------
       // Because the SDCard contents can also be written to the client, SDCard access
-      // is protected by a semaphore mutex.
+      // is protected from those writes by a semaphore mutex.
       //
       if (xSemaphoreTake(xSDCardAccessMutex, (TickType_t)SDCARD_ACCESS_MUTEX) == pdTRUE)
       {
@@ -134,7 +131,7 @@ void CManageSamples::Task_ManageSampleResults(void* parameter)
 
          // // Manage the refresh data base.
          // //
-         Temp.sample[entries].value[0] = SampleSet.time;
+         Temp.sample[entries].value[0] = MotorControl.GetElapsedSeconds();
 
          // We post-process the 
          Temp.sample[entries].value[1] = slugDepth;
@@ -191,6 +188,8 @@ void CManageSamples::Task_ManageSampleResults(void* parameter)
          }
          else
          {
+//            Serial.println("Plotting");
+            
             jsonString = ManageSamples.GetCurrentPlotValuesForClient(&SampleSet, Temp.entries - 1);
 //         Serial.println(Temp.entries);
 //         Serial.println(jsonString);
@@ -203,11 +202,11 @@ void CManageSamples::Task_ManageSampleResults(void* parameter)
          // Sample has been sent to the client. Check whether we are recording and so
          // need to also write to the SDCard..
          // 
-         if (Buttons.GetBooleanState(B_TEST_CONTROL))
+         if (Flag.Recording)
          {
             // Here we re-assemble the sample set as required by the SDCard.
             //
-            Serial.println("Writing to SDCard");
+//            Serial.println("Writing to SDCard");
 #ifndef DATALOGGER_IOT      
 //           theSPI.beginTransaction(SPISettings(Motor.GetSpiClk(), MSBFIRST, SPI_MODE0));
 //           SD.begin(SDCARD_CS, theSPI);
@@ -216,7 +215,7 @@ void CManageSamples::Task_ManageSampleResults(void* parameter)
             // The GetTime function will eventually return the current time that
             // was downloaded from the laptop at startup.
             //
-            sprintf(theString, "%s", MotorControl.SecondsToTime(SampleSet.time).c_str());
+            sprintf(theString, "%s", MotorControl.SecondsToTime(LimaxTime.GetLimaxTime()));
 
             // Write the current time as the first entry in the line.
             //
@@ -225,22 +224,22 @@ void CManageSamples::Task_ManageSampleResults(void* parameter)
 
             // Write the current slug position.
             //
-            sprintf(theString, "%e,", slugDepth);  // note trailing comma
+            sprintf(theString, "%8.6e,", slugDepth);  // note trailing comma
             mSDCardLine.concat(theString);
 
             // Add in the pressure and temperature data from each sensor.
             //
-            sprintf(theString, "%e,", SampleSet.SensorData[SENSOR_1].pressure.value);
+            sprintf(theString, "%8.6e,", SampleSet.SensorData[SENSOR_1].pressure.value);
             mSDCardLine.concat(theString);
                
             vTaskDelay(1);
 
-            sprintf(theString, "%e,", SampleSet.SensorData[SENSOR_2].pressure.value);
+            sprintf(theString, "%8.6e,", SampleSet.SensorData[SENSOR_2].pressure.value);
             mSDCardLine.concat(theString);
                
             vTaskDelay(1);
 
-            sprintf(theString, "%e\n", SampleSet.SensorData[SENSOR_3].pressure.value);
+            sprintf(theString, "%8.6e\n", SampleSet.SensorData[SENSOR_3].pressure.value);
             mSDCardLine.concat(theString);
             P_SAMP(Serial.print(mSDCardLine));
             SDCard.AppendFile(DataFilename, mSDCardLine);
@@ -259,18 +258,6 @@ void CManageSamples::Task_ManageSampleResults(void* parameter)
       else
       {
          Serial.println("COULD NOT ACCESS MUTEX IN TIME");
-      }
-
-      // Decide if the test has completed.
-      //
-      if (SampleSet.time > (uint32_t)Data.GetDataEntryNumericValue(DB_SINE_RUNTIME_MINS) * 60)
-      {
-         // Test is over.
-         //
-         Buttons.SetBooleanState(B_TEST_CONTROL, false);
-         Serial.println("Stopping test");       
-         Timers.StartIntervalTimer(DO_SAMPLE, BACKGROUND_SAMPLE_TIME);
-//         NotifyClients(Buttons.GetButtonStates());
       }
    }
 
@@ -370,7 +357,7 @@ String CManageSamples::GetCurrentPlotValuesForClient(SensorSampleType* SampleSet
       // Assemble the ith entry as a json string. 
       //
       i = index;
-      sprintf(theString, "%s", MotorControl.SecondsToTime((uint32_t)Temp.sample[i].value[0]).c_str());
+      sprintf(theString, "%s", MotorControl.SecondsToTime(MotorControl.GetElapsedSeconds()));
       jSonReadings[Data.GetDataEntry(DB_TEST_ELAPSED_TIME).JsonValue] = theString;      // time
 
       sprintf(theString, "%.2f", Data.GetDataEntryNumericValue(DB_CONTROLLER_TEMP));

@@ -4,6 +4,7 @@
 #define  _MAIN_H
 
 #include <Arduino.h>
+#include <math.h>
 #include <ElegantOTA.h>
 #include <SPI.h>
 #include <WiFi.h>
@@ -15,7 +16,6 @@
 #include <SparkFun_Qwiic_OLED.h>
 #include <res/qw_fnt_8x16.h>
 #include <SD_MMC.h>
-
 #include "Ledscreen.h"
 
 
@@ -48,7 +48,15 @@
 #define  STEPPER_CS              5     // Stepper select (low)
 #define  STEPPER_RESET           33    // Stepper reset
 
-#define  BACKGROUND_SAMPLE_TIME  10000
+#define  BACKGROUND_SAMPLE_TIME  10
+
+#define  MOTOR_STEPS_PER_REV     200
+#define  PARKING_SPEED_MPM       3     // parking speed in metres/minute
+#define  NORMAL_ACCEL_RATE       100
+#define  SLOW_ACCEL_RATE         5
+#define  PARK_SHUTDOWN_DISTANCE  0.01     // below park position
+
+#define  PROFILE_INTERVAL_TIME   1000       // millisecs between profile plot events
 
 #define  SAMPLE_QUEUE_SIZE       7
 
@@ -67,7 +75,6 @@ typedef struct
    uint32_t DoSine3              : 1;
    uint32_t OnSetup              : 1;
    uint32_t DoSample             : 1;
-   uint32_t UpdateIntervalTimer  : 1;
    uint32_t StartLedFlasher      : 1;
    uint32_t SineTestRunning      : 1;
    uint32_t SweepTestRunning     : 1;
@@ -79,6 +86,15 @@ typedef struct
    uint32_t OledExists           : 1;
    uint32_t BlinkLed             : 1;
    uint32_t RePlot               : 1;  
+   uint32_t UseLedScreen         : 1;
+   uint32_t ReturnToZero         : 1;
+   uint32_t Recording            : 1;
+   // uint32_t DoRecordEvent        : 1;
+   // uint32_t DoPlotEvent          : 1;
+   // uint32_t SchedulePlotEvent    : 1;
+   // uint32_t ScheduleRecordEvent  : 1;
+   // uint32_t SampleRunning        : 1;
+
 } Flags;
 
 

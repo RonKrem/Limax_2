@@ -6,10 +6,11 @@
 #include "Timers.h"
 #include "Ledscreen.h"
 #include "LimaxTime.h"
+#include "MotorControl.h"
 
 #include "WellSimulator.h"
 
-#define  PRINT_NETWORK
+//#define  PRINT_NETWORK
 #ifdef PRINT_NETWORK
 #define  P_NET(x)   x;
 #else
@@ -26,11 +27,14 @@
 extern CNetwork Network;
 extern CManageSamples ManagemSamples;
 extern CTimers Timers;
+#ifdef LED_SCREEN      
 extern CLedScreen LedScreen;
+#endif
 extern CLimaxTime LimaxTime;
 
 #ifdef SIMULATING
 extern CWellSimulator WellSimulator;
+extern CMotorControl MotorControl;
 #else
 extern CEspNow EspNow;
 #endif
@@ -43,7 +47,7 @@ extern xQueueHandle xIncomingQueue;
 extern xQueueHandle xNewSampleQueue;
 
 extern DynamicData Temp;
-
+extern Flags Flag;
 extern char OledText[];
 
 // Currently the set of well nodes are defined here by their addresses.
@@ -170,7 +174,9 @@ boolean CNetwork::Init(uint32_t channel)
                   // Define the background spin time for the sample timer.
                   //
                   StartTimer(TIMER_NO_TIMEOUT, (TickType_t)20000);
-                  LedScreen.WriteLine3("Network OK");
+#ifdef LED_SCREEN      
+                  if (Flag.UseLedScreen) LedScreen.WriteLine3("Network OK");
+#endif                  
 
                   return true;
                }
@@ -264,7 +270,23 @@ void CNetwork::Task_SampleManager(void* parameter)
       // Wait for an incoming <mCurrentTask> message defining the next step to be done.
       //
       xQueueReceive(Network.GetProcessQueueHandle(), (TaskType*)&currentTask, portMAX_DELAY);
+// #ifdef SIMULATING
+//       float slugDepth;
 
+//       Serial.println("Asking for the sensor samples.");
+//       slugDepth = MotorControl.GetSlugDepth();
+
+      
+//       if (xQueueSendToBack(xNewSampleQueue, &mSamples, portMAX_DELAY) != pdTRUE)
+//       {
+//          Serial.println("xNewSampleQueue full");
+//       }
+
+//       // Ready for next.
+//       //
+//       mCurrentNode = 0;
+
+// #else
       if (mCurrentNode == 0)
       {
          mSamples.actualEntries = 0;
@@ -369,11 +391,23 @@ void CNetwork::Task_SampleManager(void* parameter)
             {
                // All nodes have been sampled. Copy the sensor data set to the xNewSampleQueue.
                //
-//               mSamples.time = LimaxTime.GetLimaxTime(); // finally add time.
+               mSamples.time = LimaxTime.GetLimaxTime(); // finally add time.
 #ifdef SIMULATING
                mSamples.time = WellSimulator.GetSampleNumber();
 #endif
                Serial.println("*** All nodes sampled. Sample set being queued for processing");
+
+               // if (Flag.SchedulePlotEvent)
+               // {
+               //    Flag.SchedulePlotEvent = false;
+               //    Flag.DoPlotEvent = true;
+               // }
+               // if (Flag.ScheduleRecordEvent)
+               // {
+               //    Flag.ScheduleRecordEvent = false;
+               //    Flag.DoRecordEvent = true;
+               // }
+
                if (xQueueSendToBack(xNewSampleQueue, &mSamples, portMAX_DELAY) != pdTRUE)
                {
                   Serial.println("xNewSampleQueue full");
@@ -390,6 +424,7 @@ void CNetwork::Task_SampleManager(void* parameter)
             Serial.printf(" No handler: CurrentTask: %d\n", currentTask);
             break;
       }
+// #endif      
    }
 
    vTaskDelete(NULL);
@@ -456,7 +491,8 @@ void CNetwork::Task_ProcessReceivedPacket(void* parameter)
       // Wait for an incoming message from a node via EspNow.
       //
       xQueueReceive(xIncomingQueue, (RXQuePacket*)&q, portMAX_DELAY);
-
+      P_NET(Serial.println("xIncomingQueue packet arrived"));
+      
       // Copy the incoming message to local storage.
       //
       memcpy((uint8_t*)&mRxPacket, (uint8_t*)&q.pkt, sizeof(PacketType));

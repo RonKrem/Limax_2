@@ -43,7 +43,7 @@ public:
 
    void StartSampleTimer(void);
 
-   float GetSlugDepth(void);
+//   float GetSlugDepth(void);
 
    void ClearSampleNumber(void);
 
@@ -51,7 +51,7 @@ public:
 
 private:
 
-   void GetTestSampleSet(uint32_t welNumber);
+   void GetTestSampleSet(uint32_t welNumber, float depth);
 
    int FindMatchingNode(void);
 

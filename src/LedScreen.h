@@ -26,7 +26,7 @@ class CLedScreen
 public:
     CLedScreen(void);
 
-    void Init(void);
+    boolean Init(void);
 
     void DisplayPage(void);
 

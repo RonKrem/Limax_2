@@ -358,6 +358,28 @@ void CMotor::RunMotorAtRevsPerSec(float revsPerSec)
    RunAtTickRate(tickRate);
 }
 
+//-----------------------------------------------------------------------------
+//
+void CMotor::RunAtTickRate(float fTicksPerSec)
+{
+   SpiCommandType command;
+   int32_t ticksPerSec;
+
+   ClearSpiMessage(&command);
+   ticksPerSec = (int32_t)(fTicksPerSec + 0.5);
+   command.command = PWRSTP_RUN;
+   if (ticksPerSec < 0)
+   {
+      command.command |= 1;
+      ticksPerSec = abs(ticksPerSec);
+   }
+
+   command.bytes = 3;
+   command.flag.sendParam = true;
+   command.outValue = (ticksPerSec & 0xfffff);
+   SendSpiCommand(&command);
+}
+
 // All below are private...
 //
 //-----------------------------------------------------------------------------
@@ -390,26 +412,26 @@ void CMotor::RunAtSPS(uint32_t stepsPerSec)
    }
 }
 
-// //-----------------------------------------------------------------------------
-// //
-// void CMotor::SetMaxSpeed(uint32_t stepsPerSec)
-// {
-//    uint32_t temp;
+//-----------------------------------------------------------------------------
+//
+void CMotor::SetMaxSpeed(uint32_t stepsPerSec)
+{
+   uint32_t temp;
 
-//    temp = StepsPerSecondToMaxSpeed(stepsPerSec);   // change to motor speed
-//    Serial.printf("Motor steps: %d\n", temp);
-//    SetParam(MAX_SPEED, temp);
-// }
+   temp = StepsPerSecondToMaxSpeed(stepsPerSec);   // change to motor speed
+   Serial.printf("Motor steps: %d\n", temp);
+   SetParam(MAX_SPEED, temp);
+}
 
-// //-----------------------------------------------------------------------------
-// //
-// void CMotor::SetMinSpeed(uint32_t stepsPerSec)
-// {
-//    uint32_t temp;
+//-----------------------------------------------------------------------------
+//
+void CMotor::SetMinSpeed(uint32_t stepsPerSec)
+{
+   uint32_t temp;
 
-//    temp = StepsPerSecondToMinSpeed(stepsPerSec);   // change to motor speed
-//    SetParam(MIN_SPEED, temp);
-// }
+   temp = StepsPerSecondToMinSpeed(stepsPerSec);   // change to motor speed
+   SetParam(MIN_SPEED, temp);
+}
 
 //-----------------------------------------------------------------------------
 // Range is 0 - 4
@@ -467,28 +489,6 @@ void CMotor::Run(uint32_t speed)
    command.bytes = 3;
    command.flag.sendParam = true;
    command.outValue = (speed & 0xfffff);
-   SendSpiCommand(&command);
-}
-
-//-----------------------------------------------------------------------------
-//
-void CMotor::RunAtTickRate(float fTicksPerSec)
-{
-   SpiCommandType command;
-   int32_t ticksPerSec;
-
-   ClearSpiMessage(&command);
-   ticksPerSec = (int32_t)(fTicksPerSec + 0.5);
-   command.command = PWRSTP_RUN;
-   if (ticksPerSec < 0)
-   {
-      command.command |= 1;
-      ticksPerSec = abs(ticksPerSec);
-   }
-
-   command.bytes = 3;
-   command.flag.sendParam = true;
-   command.outValue = (ticksPerSec & 0xfffff);
    SendSpiCommand(&command);
 }
 
@@ -822,7 +822,7 @@ void CMotor::ConfigureDefaultPowerstep(void)
    //      ^^^ STEP_SEL half step
 //   SetParam(STEP_MODE, CM_VM | mStepTable[StepIndex].entry.motorStep);    //
 //   SetParam(STEP_MODE, CM_VM | 3);    // 1/8 th
-   SetParam(STEP_MODE, 3);    // 1/8 th
+   SetParam(STEP_MODE, CM_VM | 3);    // 1/8 th
 
    P_MOTR(Serial.printf("STEP MODE %02X\n", GetParam(STEP_MODE)));
 

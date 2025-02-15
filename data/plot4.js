@@ -393,6 +393,7 @@
    function Plot(time, slug, sensor1, sensor2, sensor3) 
    {
       console.log("Plot");
+//      console.log(slug);
 //         var today = new Date();
 //         var t = today.getHours() + ":" + today.getMinutes() + ":" + today.getSeconds();
       addData(myChart0, time, slug);
@@ -481,6 +482,17 @@
 
          document.getElementById(SENSOR_3_PRESS).innerHTML        = obj.press3;
          document.getElementById(SENSOR_3_PRESS_UNIT).innerHTML   = obj.p3unit;
+
+      }, false);
+      
+      //-----------------------------------------------------------------------------
+      source.addEventListener('new_readings', function(e) 
+      {
+         console.log("new_readings");
+         var obj = JSON.parse(e.data);
+         console.log(obj);
+
+         Plot(obj.stime, obj.slug, 0, 0, 0);
 
       }, false);
 

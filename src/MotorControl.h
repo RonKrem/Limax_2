@@ -3,12 +3,20 @@
 #include "Main.h"
 
 
+
+typedef enum
+{
+   PROFILE_NOTHING,
+   PROFILE_EVENT,
+} ProfileStateEnum;
+
+
 class CMotorControl
 {
 public:
    CMotorControl();
 
-   void Init(void);
+   boolean Init(void);
 
    static void Task_ProcessStepTimer(void* parameter);
 
@@ -49,54 +57,76 @@ public:
 
    uint32_t GetSteps(void) const;
 
-   int32_t GetAmplitude(void);
-
    String SecondsToTime(uint32_t seconds);
 
    float NewSum(uint32_t index, boolean sine2, boolean sine3);
 
+   uint32_t GetElapsedSeconds(void);
+
+   void ComputeParameters(void);
+
+   void DoParking(void);
+
+   void SetNormalAccelRate(void);
+   void SetSlowAccelRate(void);
+
+   static void TimerDone(xTimerHandle pxTimer);
+   void StartProfileTimer(void);
+   ProfileStateEnum GetProfileTimerState(void) const;
+
 private:  
 
-   void ComputeDepth(uint32_t seconds);
+   void BeginProfileTimer(void);
 
-   void SweepState(uint32_t seconds);
+   void ComputeSineDepth(void);
+
+   void ComputeSweepDepth(void);
 
    void PutSlugDepth(float position);
 
-   
+   float CoSine(float seconds, float period, float phase, float amplitude) const;
+
 private:
 
    boolean mBoundariesDefined;
    float mSlugDepth;
-   SemaphoreHandle_t mSlugMutex;
 
-   float mOneDrumTurnInCms;
+   SemaphoreHandle_t mSlugMutex;
+   xTimerHandle xProfileIntervalTimer;
+   
+   ProfileStateEnum mProfileTimerState;
+   uint32_t mMaxProfileTime;
+   uint32_t mTestSeconds;
+   uint32_t mProfileElapsedTime;
+
    float mPrevious;
 
    float mTemperature;
    uint32_t mSubStart, mSubEnd;
    uint32_t mSteps;
-   float mPhaseScale;
+   uint32_t mAnalysisSteps;
    float mTheMax;
-   float mAngularFrequency1, mAngularFrequency2, mAngularFrequency3;
-   float mAmplitude;
    float mAmplitude1, mAmplitude2, mAmplitude3;
    float mPhase1, mPhase2, mPhase3;
    float mPeriod1, mPeriod2, mPeriod3;
    float mScale, mDepth;
    float mMax, mMin;
-   uint32_t mTestSeconds;
 
    float mf0, mf1, mTime, mR;
 
+   float mSpeedMultiplier;
+   float mParkingSpeedRPS;
+   float mParkingIncrement;
 };
+
+
 
 
 //-------------------------------------------------------------------
 //
-inline int32_t CMotorControl::GetAmplitude(void)
+inline ProfileStateEnum CMotorControl::GetProfileTimerState(void) const
 {
-   return (int32_t)(-mAmplitude);;
+   return mProfileTimerState;
 }
 
 //-------------------------------------------------------------------
@@ -147,3 +177,4 @@ inline float CMotorControl::GetScale(void) const
 {
    return mScale;
 }
+

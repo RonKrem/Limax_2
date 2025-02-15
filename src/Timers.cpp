@@ -25,13 +25,15 @@ extern CData Data;
 extern CManageSamples ManageSamples;
 extern CLimaxTime LimaxTime;
 extern CTempTMP116 tmp116;
+#ifdef LED_SCREEN      
 extern CLedScreen LedScreen;
+#endif
 
 extern CWellSimulator WellSimulator;
 extern char OledText[];
 
 extern xQueueHandle xStepQueue;
-
+extern Flags Flag;
 extern boolean LedState;
 extern SemaphoreHandle_t xSDCardAccessMutex;
 
@@ -42,9 +44,9 @@ CTimers Timers;
 //-------------------------------------------------------------------
 //
 CTimers::CTimers(void)
-: mIntervalTimerState(NO_INTERVAL_TIMER),
-  mStepTimerState(NO_STEP_TIMER),
-  mTestElapsedSeconds(0)
+: mStepTimerState(NO_STEP_TIMER),
+  mRecordIntervalTicks(0),
+  mPlotIntervalTicks(0)
 {
 }
 
@@ -59,66 +61,6 @@ void CTimers::Init(void)
       // The motor step timer always runs at one second intervals.
       //
       StartStepTimer(DO_STEP, 1000);
-
-      // The inteval or sample time timer sets the user defined sample interval.
-      //
-      if (instance->xIntervalTimer = xTimerCreate("Interval", (BACKGROUND_SAMPLE_TIME / portTICK_PERIOD_MS), pdTRUE, (void*)0, instance->IntervalTimerDone))
-      {
-#ifdef SIMULATING       
-         StartIntervalTimer(DO_SAMPLE, 5000);   // arbitrary
-#else         
-         StartIntervalTimer(DO_SAMPLE, BACKGROUND_SAMPLE_TIME);
-#endif         
-      }
-   }
-}
-
-//-----------------------------------------------------------------------------
-// This will change the inter-sample delay.
-//
-void CTimers::StartIntervalTimer(IntervalTimerType type, uint32_t delaymSecs)
-{
-   P_TIME(Serial.printf("StartIntervalTimer %d  %d\n", type, delaymSecs));
-   mIntervalTimerState = type;
-   Flag.DoSample = false;
-   xTimerChangePeriod(xIntervalTimer, delaymSecs / portTICK_PERIOD_MS, 10);
-}
-
-//-----------------------------------------------------------------------------
-// The sample interval time has expired. Here we need to recompute the delay
-// time as the user may have made a change.
-//
-void CTimers::IntervalTimerDone(xTimerHandle pxTimer)
-{
-   uint32_t interval;
-   String temperatureC;
-
-   // A timer period has expired. What happens here depends
-   // on what the <IntervalTimerState> has been set to.
-   //
-   P_TIME(Serial.printf("IntervalTimer done %d\n", Timers.GetIntervalTimerState()));
-   switch (Timers.GetIntervalTimerState())
-   {
-   case NO_INTERVAL_TIMER:
-      break;
-   
-   case DO_SAMPLE:
-      // This interval timer runs continuously at the period set by a
-      // call to StartIntervalTimer.
-      //
-      Flag.DoSample = true;                     // start this sample
-      
-#ifdef LIMAX_CONTROLLER      
-      temperatureC = tmp116.ReadTemperature();
-#endif      
-//      sprintf(OledText, "Temp %.2f", temperatureC.toFloat());
-//      LedScreen.WriteLine1(OledText);
-      Data.PutDataEntryValue(DB_CONTROLLER_TEMP, temperatureC);
-
-      break;
-
-   default:
-      break;
    }
 }
 
@@ -156,6 +98,56 @@ void CTimers::StepTimerDone(xTimerHandle pxTimer)
       // clock (LimaxTime) that provides a standard clock for the system.
       //
       LimaxTime.StepLimaxTime();  // For the time being, this is the actual time clock
+
+      // // The sensor samples are taken at whatever is the fastest of the two intervals,
+      // // mPlotInterval or mRecordInterval. 
+      // // Both times, however, are ticked at once.
+      // //
+      // Timers.StepPlotIntervalTicks();
+      // Timers.StepRecordIntervalTicks();
+      // if (Timers.GetRecordIntervalTicks() >= Timers.GetRecordInterval())
+      // {
+      //    // First reset the record ticks.
+      //    //
+      //    Timers.ClearRecordIntervalTicks();
+
+      //    // Time to run a test and record it if a test is running.
+      //    //
+      //    if (Flag.SineTestRunning)
+      //    {
+      //       Flag.DoSample = true;
+      //    }
+
+      //    // and we schedule that the result of that sample will be
+      //    // recorded on the sdcard.
+      //    //
+      //    Flag.ScheduleRecordEvent = true;
+      // }
+
+      // if (Timers.GetPlotIntervalTicks() >= Timers.GetPlotInterval())
+      // {
+      //    // First reset the record ticks.
+      //    //
+      //    Timers.ClearPlotIntervalTicks();
+
+      //    // Always flag a sample for plotting.
+      //    //
+      //    Flag.DoSample = true;
+
+      //    // and flag the sample result will be recorded.
+      //    //
+      //    Flag.SchedulePlotEvent = true;
+      // }
+
+      Timers.StepRecordIntervalTicks();
+      if (Timers.GetRecordIntervalTicks() >= Timers.GetRecordInterval())
+      {
+         // First reset the record ticks.
+         //
+         Timers.ClearRecordIntervalTicks();
+
+         Flag.DoSample = true;
+      }
 
       Flag.BlinkLed = true;
 

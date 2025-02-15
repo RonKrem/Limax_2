@@ -15,8 +15,6 @@
 #include "TempTMP116.h"
 
 using namespace std;
-
-
 #define  PWR_ENABLE           32    // power enable
 #define  SDA_PIN              21
 #define  SCL_PIN              22
@@ -34,7 +32,6 @@ const char* password = "7h8nfrx4s9";
 
 extern CTimers Timers;
 
-CLedScreen LedScreen;
 AsyncWebServer server(80);    // create AsyncWebServer object on port 80
 AsyncWebSocket ws("/ws");     // create a WebSocket object
 AsyncEventSource events("/events");
@@ -50,7 +47,6 @@ CMotorControl MotorControl;
 CFileSystem FileSystem;
 CEprom Eprom;
 CSDCard SDCard;
-//CControls Controls;
 CManageSamples ManageSamples;
 CNetwork Network;
 CLimaxTime LimaxTime;
@@ -59,7 +55,10 @@ CTempTMP116 tmp116;
 #ifdef SIMULATING
 CWellSimulator WellSimulator;
 #endif
-xTimerHandle xIntervalTimer;
+#ifdef LED_SCREEN
+CLedScreen LedScreen;
+#endif
+xTimerHandle xProfileIntervalTimer;
 xTimerHandle xStepTimer;
 xTimerHandle xSafetyTimer;
 
@@ -108,25 +107,32 @@ boolean InitWiFi(void)
 //   int channel;
 
 #ifdef SOFT_AP
-   LedScreen.WriteLine1("Connecting...");
+#ifdef LED_SCREEN
+   if (Flag.UseLedScreen) LedScreen.WriteLine1("Connecting...");
+#endif
    WiFi.mode(WIFI_AP_STA);
    WiFi.softAP(ssid, password, WIFI_CHANNEL);
    Serial.println(WiFi.softAPIP());
    sprintf(OledText, "%s", WiFi.softAPIP().toString());
-   LedScreen.WriteLine1(OledText);
+#ifdef LED_SCREEN
+   if (Flag.UseLedScreen) LedScreen.WriteLine1(OledText);
+#endif   
 #else
    WiFi.mode(WIFI_STA);
    WiFi.begin(ssid, password);
    Serial.println("Connecting to WiFi...");
-   LedScreen.WriteLine1("Connecting...");
-
+#ifdef LED_SCREEN
+   if (Flag.UseLedScreen) LedScreen.WriteLine1("Connecting...");
+#endif
    while (WiFi.status() != WL_CONNECTED) 
    {
       Serial.print('.');
       delay(1000);
    }
    sprintf(OledText, "%s", WiFi.localIP().toString());
-   LedScreen.WriteLine1(OledText);
+#ifdef LED_SCREEN
+   if (Flag.UseLedScreen) LedScreen.WriteLine1(OledText);
+#endif   
 #endif
 
    // Ensure channel matches request.
@@ -369,14 +375,19 @@ void setup()
    Motor.SetParam(ALARM_EN, 0x07);
    delay(100);
    Serial.printf("Motor status: %04X\n", Motor.GetMotorStatus());
-   Motor.SetStepMode(4);
-   Motor.SetAccelRate(300);
-   Motor.SetDecelRate(1000);
+   Motor.SetStepMode(4);      // 1/16th step
+   MotorControl.SetNormalAccelRate();
+   Motor.SetMinSpeed(0);
+   Motor.SetMaxSpeed(25000);
 
-#ifdef SIMULATING
-   WellSimulator.Init(1);
+#ifdef LED_SCREEN
+   Flag.UseLedScreen = true;
+   if (!LedScreen.Init())
+   {
+      Flag.UseLedScreen = false;
+      Serial.println("No Led Screen");
+   }
 #endif
-   LedScreen.Init();
 
    Serial.println("Starting WiFi");
    if (!InitWiFi())
@@ -397,51 +408,22 @@ void setup()
    Serial.println("Starting SDCard");
    if (SDCard.Begin() != CARD_SUCCESS)
    {
-      LedScreen.WriteLine2("SDCard FAIL");
+#ifdef LED_SCREEN      
+      if (Flag.UseLedScreen) LedScreen.WriteLine2("SDCard FAIL");
+#endif      
       Serial.println("Card Init failed");
       return;
    }
    if (!SDCard.VerifyDataFolder(DATA_FOLDER) == CARD_SUCCESS)
    {
-      LedScreen.WriteLine2("Bad Folders");
+#ifdef LED_SCREEN      
+      if (Flag.UseLedScreen) LedScreen.WriteLine2("Bad Folders");
+#endif   
       return;
    }
-   LedScreen.WriteLine2("SDcard OK");
-
-   // Zero the line count of the dynamic temporary data file.
-   //
-   // SDCard.VerifyDataFolder(DISPLAY_DATA_FOLDER);
-   // SDCard.WriteFile(TEMP_DATA_FILENAME, "1\n"); 
-   // test.value[0] = 0;
-   // test.value[1] = 0;
-   // test.value[2] = 0;
-   // test.value[3] = 0;
-   // test.value[4] = 0;
-   // sprintf(text, "%f.4,%f.4,%f.4,%f.4,", test.value[0], test.value[1], test.value[2], test.value[3], test.value[4]);
-   // SDCard.AppendFile(TEMP_DATA_FILENAME, text); 
-   // test.value[0] = 12.9;
-   // test.value[1] = 2.6;
-   // test.value[2] = 3.7;
-   // test.value[3] = 4.8;
-   // sprintf(text, "%f.4,%f.4,%f.4,%f.4,", test.value[0], test.value[1], test.value[2], test.value[2]);
-   // SDCard.AppendFile(TEMP_DATA_FILENAME, text); 
-   // // SDCard.AppendFile(TEMP_DATA_FILENAME, "Second line\n"); 
-   // fd.close();
-
-   // fd = SDCard.OpenFile(TEMP_DATA_FILENAME);
-   // line = SDCard.ReadFileUntil(fd, '\n');
-   // Serial.printf("Line entries %d\n", line.toInt());
-   // for (int i=0; i<line.toInt(); i++)
-   // {
-   //    String myline;
-   //    for (int j=0; j<4; j++)
-   //    {
-   //       myline = SDCard.ReadFileUntil(fd, ',');
-   //       test.value[j] = myline.toFloat();
-   //    }
-   //    Serial.printf("\n<%f %f %f %f>\n", test.value[0], test.value[1], test.value[2], test.value[3]);
-   // }
-   // fd.close();
+#ifdef LED_SCREEN      
+   if (Flag.UseLedScreen) LedScreen.WriteLine2("SDcard OK");
+#endif   
 
    SDCard.ListDir("/", 2);
 
@@ -450,12 +432,15 @@ void setup()
    Serial.println("Starting EEprom");
    if (!LittleFS.begin())
    {
-      LedScreen.WriteLine3("EEprom FAIL");
+#ifdef LED_SCREEN      
+      if (Flag.UseLedScreen) LedScreen.WriteLine3("EEprom FAIL");
+#endif
       Serial.println("LittleFS mount error");
       return;
    }
-   LedScreen.WriteLine3("EEprom OK");
-
+#ifdef LED_SCREEN      
+   if (Flag.UseLedScreen) LedScreen.WriteLine3("EEprom OK");
+#endif
 //   LedScreen.WriteLine2("EEprom OK");
 //   Eprom.ListDir("/", 2);
 //   FileSystem.ListDir(LittleFS, "/", 1);
@@ -465,6 +450,7 @@ void setup()
    //
    Data.RestoreSavedValues();
    Buttons.RestoreSavedStates();
+   Data.Init();   
 
    // Serial.println("Starting WiFi");
    // if (!InitWiFi())
@@ -648,7 +634,8 @@ void setup()
       Serial.println("/values");
 
       String json = Data.GetCurrentEpromDataValues();
-//      Serial.println(json);
+//      json.concat(JSON.stringify(Buttons.GetButtonStates()));
+      Serial.println(json);
       request->send(200, "application/json", json);
       Flag.RePlot = true;
    });
@@ -763,15 +750,19 @@ void setup()
    server.addHandler(&events);
    server.begin();
 
-   // Must create the xStepQueue before we write to it.
+   // Must create the xStepQueue in CMotorContol before we write to it
+   // from CTimers.
+   //
    if (Network.Init(Channel))
    {
       Timers.Init();
 
-      Motor.SetStepMode(0);
+      Motor.SetStepMode(4);
    }
 
-   LedScreen.WriteLine4("LIMAX OK");
+#ifdef LED_SCREEN      
+   if (Flag.UseLedScreen) LedScreen.WriteLine4("LIMAX OK");
+#endif   
 }
 
 uint16_t status;
@@ -812,29 +803,21 @@ void loop()
 //    }
 
 
-   if (Flag.DoSample)
-   {
-      // Run the network/sensor data transfer. The DoSample flag is set by 
-      // the interval timer and the network requests samples from the 
-      // connected wells. The CNetwork will post the xNewSampleQueue queue
-      // containing the sensor result data on sample completion. At that 
-      // point the samples are sent to the Websocket client and also for
-      // SDCard storage.
-      //
-      Flag.DoSample = false;
-      
-      DummyTime = DummyTime + 1;
+   // if (Flag.DoSample)
+   // {
+   //    // Run the network/sensor data transfer. The DoSample flag is set by 
+   //    // the interval timer and the network requests samples from the 
+   //    // connected wells. The CNetwork will post the xNewSampleQueue queue
+   //    // containing the sensor result data on sample completion. At that 
+   //    // point the samples are sent to the Websocket client and also for
+   //    // SDCard storage.
+   //    //
+   //    Flag.DoSample = false;
 
-      Serial.println("\nStart sample.");
-      Network.StartSample();
-   }
+   //    Serial.println("\nStart sample.");
+   //    Network.StartSample();
+   // }
 
-   if (Flag.UpdateIntervalTimer)
-   {
-      Flag.UpdateIntervalTimer = false;
-
-      Timers.StartIntervalTimer(DO_SAMPLE, Data.GetDataEntryNumericValue(DB_SAMPLE_INTERVAL) * 1000);
-   }
 
 //   float v = tmp116.readTemperature();
 //   Serial.println(v);

@@ -102,6 +102,11 @@ public:
 
    String GetButtonTextAndColors(void);
 
+   void ButtonOn(const uint16_t i);
+   void ButtonOff(const uint16_t i);
+
+   void SendButtonState(uint32_t index);
+
 private:
 
    void StartTheTest(void);
@@ -113,9 +118,6 @@ private:
    String AssembleStates(uint32_t i, uint32_t index);
 
    void HandleWebButton(const String index, const String state);
-
-   void ButtonOn(const uint16_t i);
-   void ButtonOff(const uint16_t i);
 
    void ManageMotorState(const uint32_t index);
 

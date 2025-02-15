@@ -4,6 +4,7 @@
 #include "Data.h"
 #include "Network.h"
 #include "ManageSamples.h"
+#include "MotorControl.h"
 
 //#define  PRINT_SIM
 #ifdef PRINT_SIM
@@ -15,6 +16,7 @@
 extern CData Data;
 extern CWellSimulator WellSimulator;
 extern CManageSamples ManageSamples;
+extern CMotorControl MotorControl;
 
 extern uint32_t DummyTime;
 extern AddressTableEntryType NodeAddressTable[];
@@ -56,42 +58,6 @@ CWellSimulator::CWellSimulator(void)
    mSlugDepth = 0;
 }
 
-//-------------------------------------------------------------------
-//
-boolean CWellSimulator::Init(int channel)
-{
-   CWellSimulator* instance = static_cast<CWellSimulator*>(this);
-
-   // The timer is setup to be one-shot that will delay for the
-   // given time. The intent is to simulate the read request response
-   // time from a typical sensor.
-   //
-   if (xTimer = xTimerCreate("STimer", pdMS_TO_TICKS(SENSOR_RESPONSE_TIME), pdTRUE, (void*)0, instance->SensorTimerLink))
-   {
-      return true;
-   }
-
-   return false;
-}
-
-//-----------------------------------------------------------------------------
-// Call this function to initiate a sample. The timer concluding can trigger
-// the assembly of the sensor's response.
-// 
-void CWellSimulator::StartSampleTimer(void)
-{
-   xTimerChangePeriod(xTimer, SENSOR_RESPONSE_TIME, 0);
-   mSensorTimerState = SENSOR_PROBE;
-//   Serial.println("WellSimulator: StartSampleTimer");
-}
-
-//-----------------------------------------------------------------------------
-//
-void CWellSimulator::SensorTimerLink(xTimerHandle pxTimer)
-{
-   WellSimulator.TimerDone(pxTimer);
-}
-
 //-----------------------------------------------------------------------------
 // We arrive here after the simulated sensor response timeout.
 //
@@ -104,7 +70,7 @@ void CWellSimulator::TimerDone(xTimerHandle pxTimer)
       case SENSOR_PROBE:
          // The simulated sensor has replied.
          //
-         GetTestSampleSet(mTableEntry);
+         GetTestSampleSet(mTableEntry, MotorControl.GetSlugDepth());
 
          mSensorTimerState = SENSOR_NOTHING;    // reset
          break;
@@ -199,24 +165,15 @@ boolean CWellSimulator::SendData(uint8_t* address, uint8_t* packet, int size)
 }
 
 //-----------------------------------------------------------------------------
-// Load the SampleSet structure with the test data.
-//
-float CWellSimulator::GetSlugDepth(void)
-{
-   return mSlugDepth;
-}
-
-//-----------------------------------------------------------------------------
 // Load the SampleSet structure with the test data. Called from the timer.
 //
-void CWellSimulator::GetTestSampleSet(uint32_t wellNumber)
+void CWellSimulator::GetTestSampleSet(uint32_t wellNumber, float depth)
 {
    RXQuePacket q;
    float period;
    float phase;
    float amplitude;
    float reading;
-   float depth;
    
    // The intent here is to provide a single sine wave that is progressively
    // later at wells 2 and 3, and with progressivly lower amplitudes.
@@ -225,36 +182,28 @@ void CWellSimulator::GetTestSampleSet(uint32_t wellNumber)
    // 180 degrees out of phase.
    // Well 1 is the cosine at -210 degrees and well 2 at -230 degrees.
    //
-   P_SIM(Serial.printf("WellSimulator. GetTestSampleSet for %d\n", wellNumber));
-   period = Data.GetDataEntryNumericValue(DB_PERIOD1_MINS);   // period (minutes)
-   period *= 60.0;            // to seconds
+   P_SIM(Serial.printf("WellSimulator.GetTestSampleSet for %d\n", wellNumber));
 
    if (wellNumber == 0)
    {
-//      Serial.printf("SAMPLE NUMBER %d\n", mTestElapsedTime);      
-      phase = 0;
-      mSlugDepth = DoCosine(1, period, phase);
-      mSlugDepth = (mSlugDepth - 1) / 2 * Data.GetDataEntryNumericValue(DB_DEPTH_MS);
-//      Serial.println(Data.GetDataEntryNumericValue(DB_DEPTH_CMS));
-      phase = -180; 
-      reading = DoCosine(mAmplitude[wellNumber], period, phase);
+      reading = -depth;
+      reading *= 2.2;
+      reading += ((float)(rand() % 100) - 50.0) / 500.0;
    } 
    else if (wellNumber == 1)
    {
-      phase = -210;
-      reading = DoCosine(mAmplitude[wellNumber], period, phase);
-      reading += ((float)(rand() % 100) - 50.0) / 200.0;
-   } 
+      reading = -depth * 0.3;
+      reading += ((float)(rand() % 100) - 50.0) / 400.0;
+} 
    else if (wellNumber == 2)
    {
-      phase = -230;
-      reading = DoCosine(mAmplitude[wellNumber], period, phase);
-      reading += ((float)(rand() % 100) - 50.0) / 200.0;
-   }
+      reading = -depth * 0.09;
+      reading += ((float)(rand() % 100) - 50.0) / 450.0;
+}
       
    // Step the test elapsed time.
    //      
-   mTestElapsedTime += Data.GetDataEntryNumericValue(DB_SAMPLE_INTERVAL);
+//   mTestElapsedTime += Data.GetDataEntryNumericValue(DB_RECORD_INTERVAL);
 
    memcpy((uint8_t*)&q.addr, (char*)&mNodeByteAddress, BYTES_IN_ADDRESS);
    q.pkt.Token = mTxPacket.Token;

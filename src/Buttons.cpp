@@ -11,7 +11,7 @@
 #include "WellSimulator.h"
 #include "Network.h"
 
-//#define  PRINT_BUTTONS
+#define  PRINT_BUTTONS
 #ifdef PRINT_BUTTONS
 #define  P_BUT(x)   x;
 #else
@@ -23,7 +23,6 @@ extern CEprom Eprom;
 extern CMotor Motor;
 extern CMotorControl MotorControl;
 extern CTimers Timers;
-//extern CControls Controls;
 extern CData Data;
 extern CButtons Buttons;
 extern CManageSamples ManageSamples;
@@ -33,6 +32,7 @@ extern CNetwork Network;
 extern CWellSimulator WellSimulator;
 #endif
 extern void NotifyClients(String state);
+extern Flags Flag;
 
 extern DynamicData Temp;
 
@@ -60,9 +60,9 @@ ButtonDetails Button[] =
    {  "9", false, "DELETE",         "ON",          "#3e8e41", "#ee4040", 0},                     //  9 delete data
    { "10", false, "INCLUDED",       "EXCLUDED",    "#ee4040", "#3e8e41",  IS_PUSHON_PUSHOFF},     // 10 sine 2 enable
    { "11", false, "INCLUDED",       "EXCLUDED",    "#ee4040", "#3e8e41",  IS_PUSHON_PUSHOFF},     // 11 sine 3 enable
-   { "12", false, "STOP",           "START",       "#ee4040", "#3e8e41",  IS_PUSHON_PUSHOFF},     // 12 start/stop the test
-   { "13", false, "START",          "STOP",        "#3e8e41", "#ee4040", IS_PUSHON_PUSHOFF},     // 13 start the quicklook
-   { "14", false, "START",          "STOP",        "#ee4040", "#3e8e41", IS_PUSHON_PUSHOFF},     // 14 start/stop the sweep
+   { "12", false, "STOP",           "START",       "#ee4040", "#3e8e41", IS_PUSHON_PUSHOFF},     // 12 start/stop the test
+   { "13", false, "STOP",           "START",       "#3e8e41", "#ee4040", IS_PUSHON_PUSHOFF},     // 13 start the quicklook
+   { "14", false, "STOP",           "START",       "#ee4040", "#3e8e41", IS_PUSHON_PUSHOFF},     // 14 start/stop the sweep
    { "15", false, "START",          "STOP",        "#3e8e41", "#ee4040", 0},                     // 15 sweep quicklook
    { "16", false, "LINEAR",         "EXPNTL",      "#3e658e", "#30cc3d", IS_PUSHON_PUSHOFF | STATE_IS_SAVED},        // 16 linear/exponential
    { "17", false, "PLOTS",          "",            "#3e8e41", "#ee4040", 0},                     // 17 show the 4 place plot
@@ -75,6 +75,7 @@ PushOnPushOff PPButtons[]
    { 11, "B_SINE3_ENABLE"},
    { 12, "B_TEST_CONTROL"},
    { 14, "B_SWEEP_CONTROL"},
+   { 13, "B_SINE_QUICKLOOK"},
    { 16, "B_LIN_EXP"},
    {  4, "B_DIRECTION"},
    {  5, "B_BRAKE_OVERIDE"},
@@ -123,13 +124,17 @@ String CButtons::BasicSineProcessor(const String& var)
    {
       return Buttons.GetState(B_SINE2_ENABLE);
    }
-   if (var == "STATE_EX3")    // 11
+   else if (var == "STATE_EX3")    // 11
    {
       return Buttons.GetState(B_SINE3_ENABLE);
    }
-   if (var == "STATE_CNTRL")  // 12
+   else if (var == "STATE_CNTRL")  // 12
    {
       return Buttons.GetState(B_TEST_CONTROL);
+   }
+   else if (var == "SINE_QUICKLOOK_CNTRL")  // 13
+   {
+      return Buttons.GetState(B_SINE_QUICKLOOK);
    }
    return String();
 }
@@ -171,6 +176,20 @@ String CButtons::EquipmentProcessor(const String& var)
       return Buttons.GetState(B_DIRECTION);
    }
    return String();
+}
+
+//-----------------------------------------------------------------------------
+//
+void CButtons::SendButtonState(uint32_t index)
+{
+   if (GetBooleanState(index))
+   {
+      ButtonOff(index);
+   }
+   else
+   {
+      ButtonOff(index);
+   }
 }
 
 //-----------------------------------------------------------------------------
@@ -445,13 +464,13 @@ void CButtons::ActionButton(const uint16_t index, const String identifier)
             if (GetBooleanState(index))
             {
                StartTheTest();
+
+               Flag.SineTestRunning = true;
             }
             else
             {
                StopTheTest();
             }
-
-            Serial.println("Sine start/stop");
             break;
 
          //----------------------------------------------------------
@@ -465,22 +484,7 @@ void CButtons::ActionButton(const uint16_t index, const String identifier)
                P_BUT(Serial.printf("Sine quicklook %d\n", identifier.toInt()));
                if (GetBooleanState(index))
                {
-                  // This starts a quicklook display of the proposed slug
-                  // position.
-                  // 1. Define the test boundaries with the current settings.
-                  // 2. Set QuickLookSteps to equal the MasterSecondsTicks
-                  //    value somewhere between 1 and 2 seconds from now.
-                  // 3. Set QuickLookStep to the GetSubStartValue() value.
-                  //    This defines the correct start value where the slug
-                  //    is at its highest during the chosen period.
-                  //
-//                  MotorControl.DefineTestBoundaries(  DB_SINE_RUNTIME_MINS, 
-//                                                      GetButtonState(B_SINE2_ENABLE), 
-//                                                      GetButtonState(B_SINE3_ENABLE) );
-                  
-//                  QuickLookStep = MotorControl.GetSubStartValue();
-
-                  vTaskDelay(1);
+                  MotorControl.StartProfileTimer();
 
                   // Now set the min scale for the chart y axis.
                   //
@@ -490,8 +494,6 @@ void CButtons::ActionButton(const uint16_t index, const String identifier)
                   // events.send(jsonString.c_str(), "set_min_value", millis());
                   
 //                  RemoveOldData();   // remove any old data
-
-//                  QuickLookTicks = 0;
 //                  Flag.DoSineQuicklook = true;
                }
                else
@@ -512,29 +514,38 @@ void CButtons::ActionButton(const uint16_t index, const String identifier)
          // the SweepTestRunning flag.
          //
          case B_SWEEP_CONTROL:        // button 14
-//            SetButtonState(index, state);
             P_BUT(Serial.println("Sweep start/stop"));
-
             if (GetBooleanState(index))
             {
-               // Button has just been pushed on.
-               //
-//               StartIntervalTimer(DO_SAMPLE, GetSampleInterval_mSecs());
-//               SampleNumber = 0;
-//               MonitorEntries = 0;  // reset the monitor system
-//               TestElapsedSeconds = 0;
-
-//               MotorControl.InitSweep();
-
-//               Flag.SweepTestRunning = true;
+               MotorControl.InitSweep();
+               StartTheTest();
+               
+               Flag.SweepTestRunning = true;
             }
             else
             {
-               // Button has just been pushed off. Stop the test. This clears the 
-               // flags and resets the boundaries.
-               //
-//               MotorControl.StopTest();
+               StopTheTest();
             }
+
+//             if (GetBooleanState(index))
+//             {
+//                // Button has just been pushed on.
+//                //
+// //               StartIntervalTimer(DO_SAMPLE, GetSampleInterval_mSecs());
+// //               SampleNumber = 0;
+// //               MonitorEntries = 0;  // reset the monitor system
+// //               TestElapsedSeconds = 0;
+
+
+//                Flag.SweepTestRunning = true;
+//             }
+//             else
+//             {
+//                // Button has just been pushed off. Stop the test. This clears the 
+//                // flags and resets the boundaries.
+//                //
+//                MotorControl.StopTest();
+//             }
             break;
 
          case B_SWEEP_QUICKLOOK:    // button 15
@@ -682,7 +693,7 @@ void CButtons::HandleWebButton(const String index, const String identifier)
       case 11:
       case 12:
       case 14:
-      case 15:
+      case 13:
       case 16:
          P_BUT(Serial.printf("Index: %d: State: %d\n", i, Button[i].checked));
          if (Button[i].checked)
@@ -715,12 +726,9 @@ void CButtons::StartTheTest(void)
    WellSimulator.ClearSampleNumber();
 #endif   
    ManageSamples.WriteSitePreamble();
+   MotorControl.ComputeParameters();
+   Flag.Recording = true;
    Network.StartSample();
-   Timers.StartIntervalTimer(DO_SAMPLE, Data.GetDataEntryNumericValue(DB_SAMPLE_INTERVAL) * 1000);
-   //               SampleNumber = 0;
-//               MonitorEntries = 0;  // reset the monitor system
-//               TestElapsedSeconds = 0;
-//               Flag.SineTestRunning = true;
 }
 
 //----------------------------------------------------------------------------------------------
@@ -731,8 +739,16 @@ void CButtons::StopTheTest(void)
    // flags and resets the boundaries.
    //
    Serial.println("Stopping test");       
-   Timers.StartIntervalTimer(DO_SAMPLE, BACKGROUND_SAMPLE_TIME);
-//               MotorControl.StopTest();
+   Flag.Recording = false;
+   Flag.ReturnToZero = false;
+   if (MotorControl.GetSlugDepth() > -PARK_SHUTDOWN_DISTANCE)
+   {
+
+   }
+   else
+   {
+      MotorControl.DoParking();
+   }
 }
 
 //----------------------------------------------------------------------------------------------
